@@ -6,7 +6,7 @@ from workout_tracker.db import get_connection
 
 
 user_data = [ ("Alice", "alice@gmail.com"), ("Bob", "bob@gmail.com"), ("Charlie", "charlie@gmail.com") ]
-exercise_data = [("Push-up",), ("Squat",), ("Plank",), ("Burpee",)]
+exercise_data = [("Push-Up",), ("Squat",), ("Plank",), ("Burpee",)]
 
 conn = get_connection()
 cur = conn.cursor()
@@ -14,6 +14,11 @@ cur = conn.cursor()
 def seeder():
     try:
         cur.execute("SELECT COUNT(*) FROM users;")
+        if cur.fetchone()[0] > 0:
+            app.logger.info("Seeder skipped — data already exists.")
+            return None
+
+        cur.execute("SELECT COUNT(*) FROM exercises;")
         if cur.fetchone()[0] > 0:
             app.logger.info("Seeder skipped — data already exists.")
             return None

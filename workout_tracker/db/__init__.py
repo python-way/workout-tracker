@@ -45,15 +45,15 @@ def init_db():
                             """)
                 cur.execute("""CREATE TABLE IF NOT EXISTS plans (
                                 plan_id bigserial,
-                                plan_name varchar(50),
+                                plan_name varchar(50) UNIQUE,
                                 user_id integer REFERENCES users (user_id),
                                 CONSTRAINT plan_key PRIMARY KEY (plan_id)
                             );""")
 
                 cur.execute("""CREATE TABLE IF NOT EXISTS plan_exercises (
                                 plan_id integer REFERENCES plans (plan_id),
-                                exercise_id integer REFERENCES exercises (exercise_id),
-                                CONSTRAINT plan_exercise_key PRIMARY KEY (plan_id, exercise_id)
+                                exercise_name varchar(100) REFERENCES exercises (name),
+                                CONSTRAINT plan_exercise_key PRIMARY KEY (plan_id, exercise_name)
                             );""")
                 conn.commit()
         except Exception as e:
