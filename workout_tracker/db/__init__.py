@@ -45,9 +45,10 @@ def init_db():
                             """)
                 cur.execute("""CREATE TABLE IF NOT EXISTS plans (
                                 plan_id bigserial,
-                                plan_name varchar(50) UNIQUE,
+                                plan_name varchar(50),
                                 user_id integer REFERENCES users (user_id),
-                                CONSTRAINT plan_key PRIMARY KEY (plan_id)
+                                CONSTRAINT plan_key PRIMARY KEY (plan_id),
+                                CONSTRAINT plan_name_user UNIQUE (plan_name, user_id)
                             );""")
 
                 cur.execute("""CREATE TABLE IF NOT EXISTS plan_exercises (
