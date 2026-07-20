@@ -9,7 +9,13 @@ user_data = [ ("Alice", "alice@gmail.com"), ("Bob", "bob@gmail.com"), ("Charlie"
 exercise_data = [("Push-Up",), ("Squat",), ("Plank",), ("Burpee",)]
 
 conn = get_connection()
-cur = conn.cursor()
+
+try:
+    cur = conn.cursor()
+except Exception as e:
+    app.logger.error(f"DB Connection error {e}")
+    exit(1)
+
 
 def seeder():
     try:
