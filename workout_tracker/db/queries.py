@@ -208,4 +208,39 @@ def schedule_workout(workout_id, date):
         if conn:
             conn.close()
 
+def update_workout_exercise(workout_id, exe):
+    conn = get_connection()
 
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE workout_exercises SET sets = %s, reps = %s, weight = %s WHERE workout_id = %s AND exercise_name = %s" ,                         (exe.get('sets'), exe.get('reps'), exe.get('weight'), workout_id, exe.get('name')))
+            conn.commit()
+            return True
+
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+def get_exercises_by_workout(workout_id):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM workout_exercises WHERE workout_id = %s", (workout_id,))
+            exercises = cur.fetchall()
+            exercises = {f"{exercise[0]}":exercise[1] for exercise in exercises}
+
+            conn.commit()
+            return exercises
+
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
