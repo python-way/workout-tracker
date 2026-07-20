@@ -1,19 +1,26 @@
 from workout_tracker import app
 from workout_tracker.db.queries import ( 
          get_exercises,
-         # create_workout
+         get_users,
+         create_workout_with_exercises,
+         get_workouts,
+         get_non_done_workouts,
+         schedule_workout,
+
+         mark_workout_pending,
+         mark_workout_done,
         )
 
 from flask import request
 
-current_user = 'alice@gmail.com'
+current_user = '1'
 
 
 # @app.route("/login", methods=["POST"])
 # @app.route("/register", methods=["POST"])
 
 @app.route("/workout", methods=["POST"])
-def add_workout():
+def create_workout():
     data = request.get_json()
     if not data or 'exercises' not in data or 'workout_name' not in data:
         return {"message": f"Data provided is not complete"}, 400
@@ -29,28 +36,80 @@ def add_workout():
     if not db_exercises:
         return {"message" : f"No exercieses found" }, 404
 
-    db_exercises_dict = {f"{exercise[0]}":exercise[1] for exercise in db_exercises}
-
     for e in exercises:
         e_name = e.get("name")
         if not e_name:
             return {"message" : f"exercise name not found" }, 400
 
-        if e_name.title() not in db_exercises_dict.values():
+        if e_name.title() not in db_exercises.values():
             return { "message": f"Exercise {e_name} not found" }, 400
 
-    # per each exercise
-    # sets = exercise.sets
-    # reps = exercise.reps
-    # weight = exercise.weight
+    success = create_workout_with_exercises(workout_name=workout_name,user_id=current_user, exercises=exercises)
    
-    success = create_workout_with_exercises(user_id=1,workout_name=workout_name, exercises=exercises)
-
-    success = True
     if not success:
         return {"message": f"Database transaction failed"}, 500
 
-    return { "message": f"Plan created successfully" }, 201
+    return { "message": f"Workout created successfully" }, 201
+
+
+@app.route("/workout/<workout_id>/schedule", methods=["PUT"])
+def schd_workout(workout_id):
+    data = request.get_json()
+    
+    if not data or 'date' not in data:
+        return { "message" : "Data not found" }, 400
+    
+    workouts = get_workouts()
+
+    if workout_id not in workouts:
+        return { "message": "workout not found" }, 404
+
+    success = schedule_workout(workout_id, data.get('date'))
+    
+    if not success:
+        return {"message": f"Database transaction failed"}, 500
+
+    return { "message": "workout scheduled successfully" }, 200
+
+
+@app.route("/workout/<workout_id>/do", methods=["PUT"])
+def do_workout(workout_id):
+    workouts = get_workouts()
+
+    if workout_id not in workouts:
+        return { "message": "workout not found" }, 404
+
+    success = mark_workout_done(workout_id)
+ 
+    if not success:
+        return {"message": f"Database transaction failed"}, 500
+
+    return { "message" : "workout done successfully" } , 200
+
+@app.route("/workout/<workout_id>/start", methods=["PUT"])
+def start_workout(workout_id):
+    workouts = get_workouts()
+
+    if workout_id not in workouts:
+        return { "message": "workout not found" }, 404
+
+    success = mark_workout_pending(workout_id)
+ 
+    if not success:
+        return {"message": f"Database transaction failed"}, 500
+
+    return { "message" : "workout started successfully" } , 200
+
+
+@app.route("/workouts", methods=["GET"])
+def active_workouts():
+    workouts = get_non_done_workouts() 
+    if not workouts:
+        return { "message": "No workouts found" }, 200
+    
+    return {"workouts": workouts}, 200
+
+
 
 # @app.route("/workout", methods=["PUT"])
 # def update_workout():
@@ -90,64 +149,14 @@ def add_workout():
 #
 #     return { "message": "Plan deleted successfully" }, 204
 #
-# @app.route("/workout/<workout_id>/schedule", methods=["POST"])
-# def schedule_workout(workout_id):
-#     data = request.get_json()
-#
-#     if not data or 'days' not in data or 'times' not in data:
-#         return { "message" : "Data not found" }
-#
-#     success = schedule_workout(workout_id, data['days'], data['times'])
-#     
-#     if not success:
-#         return {"message": f"Database transaction failed"}, 500
-#
-#     return { "message": "workout scheduled successfully" }, 200
-#
-# @app.route("/workouts", methods=["GET"])
-# def active_workouts():
-#     workouts = get_workouts() 
-#     if not workouts:
-#         return { "message": "No workouts found" }, 200
-#     return {"workouts": workouts}, 200
-#
-# @app.route("/workout/<workout_id>", methods=["POST"])
-# def do_workout(workout_id):
-#     workouts = get_workouts()
-#     workouts_dict = {f"workout[0]": workout[1] for workout in workouts}
-#
-#     if workout_id not in workouts_dict:
-#         return { "message": "workout not found" }
-#
-#     success = mark_workout_done(workout_id)
-#  
-#     if not success:
-#         return {"message": f"Database transaction failed"}, 500
-#
-#     return { "message" : "workout done successfully" } , 200
-#
-#
-# @app.route("/workout/<workout_id>", methods=["POST"])
-# def start_workout(workout_id):
-#     workouts = get_workouts()
-#     workouts_dict = {f"workout[0]": workout[1] for workout in workouts}
-#
-#     if workout_id not in workouts_dict:
-#         return { "message": "workout not found" }
-#
-#     success = mark_workout_pending(workout_id)
-#  
-#     if not success:
-#         return {"message": f"Database transaction failed"}, 500
-#
-#     return { "message" : "workout started successfully" } , 200
-#
+
+
 # @app.route("/report", methods=["GET"])
 # def generate_report():
 #     workouts = get_done_workouts()
-#     workouts_dict = {f"workout[0]": workout[1] for workout in workouts}
+#     workouts = {f"workout[0]": workout[1] for workout in workouts}
 #
-#     if workout_id not in workouts_dict:
+#     if workout_id not in workouts:
 #         return { "message": "workout not found" }
 #
 #     for each exercise

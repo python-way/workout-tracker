@@ -43,18 +43,24 @@ def init_db():
                                 CONSTRAINT user_key PRIMARY KEY (user_id),
                                 CONSTRAINT user_email_unique UNIQUE (name, email));
                             """)
-                cur.execute("""CREATE TABLE IF NOT EXISTS plans (
-                                plan_id bigserial,
-                                plan_name varchar(50),
+                cur.execute("""CREATE TABLE IF NOT EXISTS workouts (
+                                workout_id bigserial,
+                                workout_name varchar(50),
                                 user_id integer REFERENCES users (user_id),
-                                CONSTRAINT plan_key PRIMARY KEY (plan_id),
-                                CONSTRAINT plan_name_user UNIQUE (plan_name, user_id)
+                                status varchar(50),
+                                schedule_time timestamp with time zone,
+                                CONSTRAINT workout_key PRIMARY KEY (workout_id),
+                                CONSTRAINT workout_name_user UNIQUE (workout_name, user_id)
                             );""")
 
-                cur.execute("""CREATE TABLE IF NOT EXISTS plan_exercises (
-                                plan_id integer REFERENCES plans (plan_id),
+                cur.execute("""CREATE TABLE IF NOT EXISTS workout_exercises (
+                                workout_id integer REFERENCES workouts (workout_id),
                                 exercise_name varchar(100) REFERENCES exercises (name),
-                                CONSTRAINT plan_exercise_key PRIMARY KEY (plan_id, exercise_name)
+                                sets integer NULL,
+                                reps integer NULL,
+                                weight real NULL,
+
+                                CONSTRAINT workout_exercise_key PRIMARY KEY (workout_id, exercise_name)
                             );""")
                 conn.commit()
         except Exception as e:

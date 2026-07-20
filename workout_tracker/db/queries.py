@@ -11,6 +11,7 @@ def get_exercises():
         with conn.cursor() as cur:
            cur.execute(" SELECT * FROM exercises; ")
            exercises = cur.fetchall()
+           exercises = {f"{exercise[0]}":exercise[1] for exercise in exercises}
            return exercises
     except Exception as e:
         conn.rollback()
@@ -20,14 +21,15 @@ def get_exercises():
         if conn:
             conn.close()
 
-def get_plans():
+def get_workouts():
     conn = get_connection()
 
     try:
         with conn.cursor() as cur:
-            cur.execute(" SELECT * FROM plans; ")
-            plans = cur.fetchall()
-            return plans
+            cur.execute(" SELECT * FROM workouts; ")
+            workouts = cur.fetchall()
+            workouts = {f"{workout[0]}": workout[1] for workout in workouts}
+            return workouts
     except Exception as e:
         conn.rollback()
         app.logger.error(f"Dataase error: {e}")
@@ -36,6 +38,24 @@ def get_plans():
         if conn:
             conn.close()
 
+def get_non_done_workouts():
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(" SELECT * FROM workouts WHERE status <> 'done' ")
+            workouts = cur.fetchall()
+            workouts = {f"{workout[0]}": workout[1] for workout in workouts}
+            return workouts
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Dataase error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
 def get_users():
     conn = get_connection()
 
@@ -43,7 +63,8 @@ def get_users():
         with conn.cursor() as cur:
             cur.execute(" SELECT * FROM users; ")
             users = cur.fetchall()
-            return user
+            users = {f"{user[0]}":user[1] for user in users}
+            return users
     except Exception as e:
         conn.rollback()
         app.logger.error(f"Dataase error: {e}")
@@ -95,4 +116,96 @@ def create_junctions(junctions):
     finally:
         if conn:
             conn.close()
+
+def create_workout_with_exercises(
+        workout_name,
+        user_id,
+        exercises
+        ):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute( "INSERT INTO workouts (workout_name, user_id, status) VALUES (%s,%s,%s) RETURNING  workout_id" ,
+                         (workout_name, user_id, 'New')
+                        )
+            workout_id = cur.fetchone()[0]
+            
+            junctions = []
+            for exe in exercises:
+                junction = (workout_id,)
+                exe_name = exe.get('name').title()
+                exe_sets = exe.get('sets')
+                exe_reps = exe.get('reps')
+                exe_weight = exe.get('weight')
+
+                junction += (exe_name, exe_sets, exe_reps, exe_weight)
+                junctions.append(junction)
+                
+            execute_values( cur,
+                            """INSERT INTO workout_exercises (workout_id, exercise_name, sets, reps, weight)
+                               VALUES %s""",
+                            junctions
+                        )
+            conn.commit()
+            return True
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
+
+def mark_workout_pending(workout_id):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE workouts SET status = %s WHERE workout_id = %s", ('pending', workout_id))
+            conn.commit()
+            return True
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
+
+def mark_workout_done(workout_id):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE workouts SET status = %s WHERE workout_id = %s", ('done', workout_id))
+            conn.commit()
+            return True
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
+def schedule_workout(workout_id, date):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE workouts SET schedule_time = %s WHERE workout_id = %s", (date, workout_id))
+            conn.commit()
+            return True
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
 
