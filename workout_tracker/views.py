@@ -5,12 +5,11 @@ from workout_tracker.db.queries import (
          get_exercises,
          get_users,
          create_workout_with_exercises,
+         delete_workout_with_exercises,
+
+         add_exercise_to_workout,
          update_workout_exercise,
-        
-         #TODO:
-         # delete_workout_with_exercises,
-         # add_exercise_to_workout,
-         # delete_workout_exercise,
+         delete_workout_exercise,
 
 
          get_workouts,
@@ -59,7 +58,7 @@ def create_workout():
     workout_name = data.get('workout_name')
 
     db_exercises = get_exercises()
-    if not db_exercises:
+    if db_exercises is None:
         return {"message": "Database query failed"}, 500
 
     for e in exercises:
@@ -98,7 +97,7 @@ def schd_workout(workout_id):
         return {"message": "User not found"}, 404
 
     workouts = get_workouts()
-    if not workouts:
+    if workouts is None:
         return { "message": "Database query failed" }, 500
 
     if workout_id not in workouts:
@@ -116,7 +115,7 @@ def schd_workout(workout_id):
 def start_workout(workout_id):
     """ Marks workout as pending """
     workouts = get_workouts()
-    if not workouts:
+    if workouts is None:
         return { "message": "Database query failed" }, 500
 
     if workout_id not in workouts:
@@ -134,7 +133,7 @@ def start_workout(workout_id):
 def do_workout(workout_id):
     """ Marks workout as done """
     workouts = get_workouts()
-    if not workouts:
+    if workouts is None:
         return { "message": "Database query failed" }, 500
 
     if workout_id not in workouts:
@@ -151,7 +150,7 @@ def do_workout(workout_id):
 def delete_workout(workout_id):
     """ Deleting a workout """
     workouts = get_workouts()
-    if not workouts:
+    if workouts is None:
         return { "message": "Database query failed" }, 500
 
     if workout_id not in workouts:
@@ -167,7 +166,7 @@ def delete_workout(workout_id):
 def list_workouts():
     """ List all non-done workouts """
     workouts = get_non_done_workouts() 
-    if not workouts:
+    if workouts is None:
         return { "message": "Database query failed" }, 500
     
     return {"workouts": workouts}, 200
@@ -191,22 +190,44 @@ def add_exercise(workout_id):
     if not data or 'exercise' not in data:
         return { "message" : "Data not found" }, 400
     
+    # Exercise exist?
     exercise = data.get("exercise")
-    if not exercise or 'name' not in exercise:
-        return { "message": "exercise/name not found" }, 400
+    e_name = exercise.get("name")
+    if not e_name:
+        return { "message" "Exercise name not found" }, 400
 
+    db_exercises = get_exercises()
+    if db_exercises is None:
+        return {"message": "Database query failed"}, 500
+
+    if e_name.title() not in db_exercises.values():
+        return { "message": f"Exercise {e_name} not found" }, 400
+        
+    # Workout exist?
     workouts = get_workouts()
-    if not workouts:
+    if workouts is None:
         return { "message": "Database query failed" }, 500
 
     if workout_id not in workouts:
         return { "message": "workout not found" }, 404
-   
+
+    # Exercise alreayd exist in the workout plan?  
+    db_query = get_exercises_by_workout(workout_id)
+    if not db_query:
+        return {"message": "Database query failed"}, 500
+
+    db_workout_exercises = db_query.get("exercises")
+    if not db_workout_exercises:
+        return {"message" : "No exercieses found" }, 404
+
+    if e_name.title() in db_workout_exercises.values():
+        return { "message": f"Exercise {e_name} already exist" }, 400
+
     success = add_exercise_to_workout(workout_id=workout_id, exe=exercise)
     if not success:
         return {"message": "Database transaction failed"}, 500
 
-    return {"message": "exercise added successfully" }, 200
+    return { "message": "exercise added successfully" }, 200
  
 
 @app.route("/workout/<workout_id>/exercise", methods=["PUT"])
@@ -226,19 +247,21 @@ def update_exercise(workout_id):
 
     if current_user not in users:
         return {"message": "User not found"}, 404
-
+    
+    # Workout exist?
     workouts = get_workouts()
-    if not workouts:
+    if workouts is None:
         return { "message": "Database query failed" }, 500
 
     if workout_id not in workouts:
         return { "message": "workout not found" }, 404
-
+    
     exercise = data.get('exercise')
     e_name = exercise.get("name")
     if not e_name:
         return {"message" : "exercise name not found" }, 400
- 
+    
+    # Exercise exist in the workout plan?
     db_query = get_exercises_by_workout(workout_id)
     if not db_query:
         return {"message": "Database query failed"}, 500
@@ -249,13 +272,12 @@ def update_exercise(workout_id):
     if not db_exercises or not db_exercises_data:
         return {"message" : "No exercieses found" }, 404
 
-    for e in db_exercises:
-        if e_name.title() not in db_exercises.values():
-            return { "message": f"Exercise {e_name} not found" }, 400
+    if e_name.title() not in db_exercises.values():
+        return { "message": f"Exercise {e_name} not found" }, 400
    
-    exercise['sets'] = exercise.get("sets") if exercise.get("sets") else db_exercises_data.get(e_name).get("sets")
-    exercise['reps'] = exercise.get("reps") if exercise.get("reps") else db_exercises_data.get(e_name).get("reps")
-    exercise['weight'] = exercise.get("weight") if exercise.get("weight") else db_exercises_data.get(e_name).get("weight")
+    exercise['sets'] = exercise.get("sets") if exercise.get("sets") else db_exercises_data.get(e_name.title()).get("sets")
+    exercise['reps'] = exercise.get("reps") if exercise.get("reps") else db_exercises_data.get(e_name.title()).get("reps")
+    exercise['weight'] = exercise.get("weight") if exercise.get("weight") else db_exercises_data.get(e_name.title()).get("weight")
 
     success = update_workout_exercise(workout_id=workout_id, exe=exercise)
     if not success:
@@ -264,15 +286,16 @@ def update_exercise(workout_id):
     return { "message": "Plan updated successfully" }, 200
 
 @app.route("/workout/<workout_id>/exercise/<exercise_name>", methods=["DELETE"])
-def del_exercise(workout_id):
+def del_exercise(workout_id, exercise_name):
     """ Deleting workout's exercise """
     workouts = get_workouts()
-    if not workouts:
+    if workouts is None:
         return { "message": "Database query failed" }, 500
 
     if workout_id not in workouts:
         return { "message": "workout not found" }, 404
-
+    
+    # Exercise exist in the workout plan?
     db_query = get_exercises_by_workout(workout_id)
     if not db_query:
         return {"message": "Database query failed"}, 500
@@ -281,9 +304,8 @@ def del_exercise(workout_id):
     if not db_exercises:
         return {"message" : "No exercieses found" }, 404
 
-    for e in db_exercises:
-        if exercise_name.title() not in db_exercises.values():
-            return { "message": f"Exercise {exercise_name} not found" }, 400
+    if exercise_name.title() not in db_exercises.values():
+        return { "message": f"Exercise {exercise_name} not found" }, 400
 
     success = delete_workout_exercise(workout_id=workout_id, exe_name=exercise_name)
     if not success:

@@ -157,6 +157,23 @@ def create_workout_with_exercises(
         if conn:
             conn.close()
 
+def delete_workout_with_exercises(workout_id):
+    conn = get_connection()
+
+    try: 
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM workouts WHERE workout_id= %s", (workout_id,))
+            conn.commit()
+            return True
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
 
 
 def mark_workout_pending(workout_id):
@@ -247,3 +264,47 @@ def get_exercises_by_workout(workout_id):
     finally:
         if conn:
             conn.close()
+
+
+def add_exercise_to_workout(workout_id, exe):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            exe_name = exe.get("name").title()
+            sets = exe.get("sets")
+            reps = exe.get("reps")
+            weight = exe.get("weight")
+
+            cur.execute("INSERT INTO workout_exercises (workout_id, exercise_name, sets, reps, weight) VALUES (%s,%s,%s,%s,%s)",
+                        (workout_id, exe_name, sets, reps, weight)
+                        )
+            conn.commit()
+            return True
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+def delete_workout_exercise(workout_id, exe_name):
+    conn = get_connection()
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM workout_exercises WHERE (workout_id = %s AND exercise_name = %s)",
+                        (workout_id, exe_name.title())
+                       )
+            conn.commit()
+            return True
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+

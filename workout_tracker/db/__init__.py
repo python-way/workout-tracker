@@ -54,8 +54,8 @@ def init_db():
                             );""")
 
                 cur.execute("""CREATE TABLE IF NOT EXISTS workout_exercises (
-                                workout_id integer REFERENCES workouts (workout_id),
-                                exercise_name varchar(100) REFERENCES exercises (name),
+                                workout_id integer REFERENCES workouts (workout_id) ON DELETE CASCADE,
+                                exercise_name varchar(100) REFERENCES exercises (name) ON DELETE CASCADE,
                                 sets integer NULL,
                                 reps integer NULL,
                                 weight real NULL,

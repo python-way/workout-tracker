@@ -9,6 +9,11 @@ user_data = [ ("Alice", "alice@gmail.com"), ("Bob", "bob@gmail.com"), ("Charlie"
 exercise_data = [("Push-Up",), ("Squat",), ("Plank",), ("Burpee",)]
 
 conn = get_connection()
+if not conn:
+    app.logger.error(f"DB connection failed")
+    exit(1)
+
+
 
 try:
     cur = conn.cursor()
