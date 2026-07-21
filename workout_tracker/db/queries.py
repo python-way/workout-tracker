@@ -63,7 +63,7 @@ def get_users():
         with conn.cursor() as cur:
             cur.execute(" SELECT * FROM users; ")
             users = cur.fetchall()
-            users = {f"{user[0]}":user[1] for user in users}
+            users = {f"{user[0]}":user[2] for user in users}
             return users
     except Exception as e:
         conn.rollback()
@@ -289,7 +289,7 @@ def add_exercise_to_workout(workout_id, exe):
         if conn:
             conn.close()
 
-def delete_workout_exercise(workout_id, exe_name):
+def delete_workout_from_exercise(workout_id, exe_name):
     conn = get_connection()
     
     try:

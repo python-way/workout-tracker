@@ -1,5 +1,7 @@
 from flask import request
 
+from werkzeug.security import generate_password_hash, check_password_hash
+
 from workout_tracker import app
 from workout_tracker.db.queries import ( 
          get_exercises,
@@ -9,8 +11,14 @@ from workout_tracker.db.queries import (
 
          add_exercise_to_workout,
          update_workout_exercise,
-         delete_workout_exercise,
-
+         delete_workout_from_exercise,
+   
+    
+         #TODO:
+         # create_exe,
+         # update_exe,
+         # delete_exe,
+         # sign_up
 
          get_workouts,
          get_non_done_workouts,
@@ -28,9 +36,62 @@ current_user = '1'
 ### Auth
 
 # @app.route("/login", methods=["POST"])
-# @app.route("/register", methods=["POST"])
+def register():
+    """ Signing up a new user """
+    data = request.get_json()
+    
+    name = data.get('name')
+    password = data.get('password')
+    email = data.get('email')
 
-### Workout 
+    if not name or not password or not email:
+        return {"message": "Name, email and password are required for registeration"}, 400
+
+    users = get_users()
+    if email in users.values():
+        return {"message": f"Email {email} already exists" }, 400
+
+    success = sign_up(name,generate_password_hash(password), email)
+    if not success:
+        return { "message": "Database transaction failed" }, 500
+
+    return { "message": "User created successfully"}, 201
+
+@app.route("/register", methods=["POST"])
+def login():
+    """ Signing in user """
+    data = request.get_json()
+
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return {"message": "Email and password are required"}, 400
+
+    users = get_users() 
+    if email in users.values():
+        return {"message": f"Email {email} already exists" }, 400
+    
+     
+    user_password = get_user_password(email)
+    if not password or not check_password_hash(user_password, password):
+        return { "message": "Invalid credentials" }, 400
+    
+    jwt_data = {
+                'id': user_id, 
+                'exp': dt.datetime.utcnow() + dt.timedelta(minutes=30)
+               }
+            
+    token = jwt.encode(
+                jwt_data,
+                app.config["SECRET_KEY"],
+                algorithm="HS256"
+            )
+
+    return str(token)
+
+############### Workout ###############
+
 @app.route("/workout", methods=["POST"])
 def create_workout():
     """
@@ -172,15 +233,98 @@ def list_workouts():
     return {"workouts": workouts}, 200
 
 
-### Exercises
-# @app.route("/exercise", methods=["POST"])
-# @app.route("/exercise", methods=["PUT"])
-# @app.route("/exercise", methods=["DELETE"])
-# @app.route("/exercise", methods=["GET"])
+############### Exercises  ###############
 
-### Workout's exercises
+@app.route("/exercise", methods=["POST"])
+def add_exercise():
+    """ 
+    Create an exercise
+    
+    Ex-Request Data: {"exercise": {"name":"Exercise", "description":"Details about the exercise", "category":"category", "muscle":"targeted muscle"}}
+    """
+    data = request.get_json()
+    if not data or 'exercise' not in data:
+        return {"message" : "Data not found" }, 400
+
+    exercise = data.get("exercise")
+    e_name = exercise.get("name")
+    if not e_name:
+        return {"message": "Exercise name is not found" }, 400
+
+    db_exercises = get_exercises()
+    if not db_exercises:
+        return {"message": "Database query failed"}, 500
+    
+    if e_name.title() in db_exercises.values():
+        return {"message": f"Exercise {e_name} already exists" }, 400
+
+    success = create_exe(exercise)
+    if not success:
+        return {"message": "Database transaction failed" }, 500
+
+    return {"message" : "Exercise created successfully"}, 201
+
+@app.route("/exercise", methods=["PUT"])
+def update_exercise():
+    """ 
+    Updates an exercise 
+
+    Ex-Request Data: {"exercise": {"name":"Exercise", "description":"More details", "category":"another category", "muscle":"targeted muscle"}}
+    """
+    data = request.get_json()
+    if not data or 'exercise' not in data:
+        return {"message" : "Data not found" }, 400
+
+    exercise = data.get("exercise")
+    e_name = exercise.get("name")
+    if not e_name:
+        return {"message": "Exercise name is not found" }, 400
+
+    db_exercises = get_exercises()
+    if not db_exercises:
+        return {"message": "Database query failed"}, 500
+    
+    if e_name.title() not in db_exercises.values():
+        return {"message": f"Exercise {e_name} does not exists" }, 400
+    
+    success = update_exe(exercise)
+    if not success:
+        return {"message": "Database transaction failed" }, 500
+
+    return {"message" : "Exercise updated successfully"}, 200
+
+
+@app.route("/exercise/<exercise_name>", methods=["DELETE"])
+def delete_exercise():
+    """ Delete an exercise """
+ 
+    db_exercises = get_exercises()
+    if not db_exercises:
+        return {"message": "Database query failed"}, 500
+    
+    if exercise_name.title() not in db_exercises.values():
+        return {"message": f"Exercise {e_name} does not exists" }
+    
+    success = delete_exe(exercise_name)
+    if not success:
+        return {"message": "Database transaction failed" }, 500
+    
+    return {"message" : "Exercise deleted successfully" }, 204
+   
+
+@app.route("/exercise", methods=["GET"])
+def list_exercises():
+    """ listing all exercises """
+    db_exercises = get_exercises()
+    if not db_exercises:
+        return {"message": "Database query failed"}, 500
+    
+    return { "Exercises": db_exercises }, 200
+
+############### Workout's exercises ###############
+
 @app.route("/workout/<workout_id>/exercise", methods=["POST"])
-def add_exercise(workout_id):
+def add_workout_exercise(workout_id):
     """ 
     Adding an exercise to a workout
 
@@ -231,7 +375,7 @@ def add_exercise(workout_id):
  
 
 @app.route("/workout/<workout_id>/exercise", methods=["PUT"])
-def update_exercise(workout_id):
+def update_workout_exercise(workout_id):
     """
         Update workout's exercise 
 
@@ -286,7 +430,7 @@ def update_exercise(workout_id):
     return { "message": "Plan updated successfully" }, 200
 
 @app.route("/workout/<workout_id>/exercise/<exercise_name>", methods=["DELETE"])
-def del_exercise(workout_id, exercise_name):
+def delete_workout_exercise(workout_id, exercise_name):
     """ Deleting workout's exercise """
     workouts = get_workouts()
     if workouts is None:
@@ -307,7 +451,7 @@ def del_exercise(workout_id, exercise_name):
     if exercise_name.title() not in db_exercises.values():
         return { "message": f"Exercise {exercise_name} not found" }, 400
 
-    success = delete_workout_exercise(workout_id=workout_id, exe_name=exercise_name)
+    success = delete_workout_from_exercise(workout_id=workout_id, exe_name=exercise_name)
     if not success:
         return {"message": "Database transaction failed"}, 500
     
