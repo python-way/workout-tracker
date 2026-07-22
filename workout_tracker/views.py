@@ -4,28 +4,35 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from workout_tracker.auth import token_required, generate_token
 
 from workout_tracker import app
-from workout_tracker.db.queries import ( 
-         get_exercises,
-         get_users,
+
+from workout_tracker.db.queries.workout import (
          create_workout_with_exercises,
          delete_workout_with_exercises,
 
          add_exercise_to_workout,
          update_workout_exercise,
-         delete_workout_from_exercise,
-   
-         create_exe,
-         update_exe,
-         delete_exe,
-         sign_up,
+         delete_exercise_from_workout,
 
          get_workouts,
          get_non_done_workouts,
          get_exercises_by_workout,
-         schedule_workout,
 
+         schedule_workout,
          mark_workout_pending,
          mark_workout_done,
+
+       )
+
+from workout_tracker.db.queries.exercise import (
+         create_exe,
+         update_exe,
+         get_exercises,
+         delete_exe,
+        )
+
+from workout_tracker.db.queries.auth import ( 
+         get_users,
+         sign_up
         )
 
 
@@ -442,7 +449,7 @@ def delete_workout_exercise(workout_id, exercise_name):
     if exercise_name.title() not in db_exercises.values():
         return { "message": f"Exercise {exercise_name} not found" }, 400
 
-    success = delete_workout_from_exercise(workout_id=workout_id, exe_name=exercise_name)
+    success = delete_exercise_from_workout(workout_id=workout_id, exe_name=exercise_name)
     if not success:
         return {"message": "Database transaction failed"}, 500
     
