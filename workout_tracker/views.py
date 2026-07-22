@@ -14,11 +14,9 @@ from workout_tracker.db.queries import (
          update_workout_exercise,
          delete_workout_from_exercise,
    
-    
-         #TODO:
-         # create_exe,
-         # update_exe,
-         # delete_exe,
+         create_exe,
+         update_exe,
+         delete_exe,
          sign_up,
 
          get_workouts,
@@ -240,14 +238,13 @@ def add_exercise():
     """ 
     Create an exercise
     
-    Ex-Request Data: {"exercise": {"name":"Exercise", "description":"Details about the exercise", "category":"category", "muscle":"targeted muscle"}}
+    Ex-Request Data: {"name":"Exercise", "description":"Details about the exercise", "category":"category", "muscle":"targeted muscle"}
     """
     data = request.get_json()
-    if not data or 'exercise' not in data:
-        return {"message" : "Data not found" }, 400
+    if not data:
+        return {"message" : "Data not found"}, 400
 
-    exercise = data.get("exercise")
-    e_name = exercise.get("name")
+    e_name = data.get("name")
     if not e_name:
         return {"message": "Exercise name is not found" }, 400
 
@@ -258,6 +255,7 @@ def add_exercise():
     if e_name.title() in db_exercises.values():
         return {"message": f"Exercise {e_name} already exists" }, 400
 
+    exercise = {"name":data.get("name"), "description":data.get("description"), "category":data.get("category"), "muscle":data.get("muscle")}
     success = create_exe(exercise)
     if not success:
         return {"message": "Database transaction failed" }, 500
@@ -272,11 +270,10 @@ def update_exercise():
     Ex-Request Data: {"exercise": {"name":"Exercise", "description":"More details", "category":"another category", "muscle":"targeted muscle"}}
     """
     data = request.get_json()
-    if not data or 'exercise' not in data:
-        return {"message" : "Data not found" }, 400
+    if not data:
+        return {"message" : "Data not found"}, 400
 
-    exercise = data.get("exercise")
-    e_name = exercise.get("name")
+    e_name = data.get("name")
     if not e_name:
         return {"message": "Exercise name is not found" }, 400
 
@@ -287,6 +284,7 @@ def update_exercise():
     if e_name.title() not in db_exercises.values():
         return {"message": f"Exercise {e_name} does not exists" }, 400
     
+    exercise = {"name":data.get("name"), "description":data.get("description"), "category":data.get("category"), "muscle":data.get("muscle")}
     success = update_exe(exercise)
     if not success:
         return {"message": "Database transaction failed" }, 500
@@ -295,7 +293,7 @@ def update_exercise():
 
 
 @app.route("/exercise/<exercise_name>", methods=["DELETE"])
-def delete_exercise():
+def delete_exercise(exercise_name):
     """ Delete an exercise """
  
     db_exercises = get_exercises()
@@ -303,7 +301,7 @@ def delete_exercise():
         return {"message": "Database query failed"}, 500
     
     if exercise_name.title() not in db_exercises.values():
-        return {"message": f"Exercise {e_name} does not exists" }
+        return {"message": f"Exercise {exercise_name} does not exists" }
     
     success = delete_exe(exercise_name)
     if not success:

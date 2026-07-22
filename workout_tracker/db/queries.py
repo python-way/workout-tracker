@@ -333,3 +333,66 @@ def sign_up(name, email, password):
 
 
 
+##### Exercises #####
+def create_exe(exe):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO exercises (name, description, category, muscle) VALUES (%s,%s,%s,%s) ",
+                        (exe.get("name").title(), exe.get("description"), exe.get("category"), exe.get("muscle"))
+                       )
+
+            conn.commit()
+            return True
+
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+def update_exe(exe):
+    conn = get_connection()
+    
+    try:
+        with conn.cursor() as cur:
+            exe_name = exe.get("name").title()
+            exe_desc = exe.get("description")
+            exe_cate = exe.get("category")
+            exe_musc = exe.get("muscle")
+            
+            cur.execute("UPDATE exercises SET description = %s, category = %s, muscle = %s WHERE name = %s",
+                        (exe_desc, exe_cate, exe_musc, exe_name)  
+                       )
+
+            conn.commit()
+            return True
+
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+def delete_exe(exe_name):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM exercises WHERE name = %s", (exe_name,)) 
+            conn.commit()
+            return True
+
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
