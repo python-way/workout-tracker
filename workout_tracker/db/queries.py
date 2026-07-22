@@ -63,8 +63,10 @@ def get_users():
         with conn.cursor() as cur:
             cur.execute(" SELECT * FROM users; ")
             users = cur.fetchall()
-            users = {f"{user[0]}":user[2] for user in users}
-            return users
+            us = {f"{user[2]}": str(user[0]) for user in users}
+            us_data = {f"{user[0]}": {"name": user[1], "email": user[2], "password": user[3] } for user in users}
+
+            return {"users":us, "users_data": us_data}
     except Exception as e:
         conn.rollback()
         app.logger.error(f"Dataase error: {e}")
@@ -306,5 +308,28 @@ def delete_workout_from_exercise(workout_id, exe_name):
     finally:
         if conn:
             conn.close()
+
+
+
+def sign_up(name, email, password):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO users (name, email, password) VALUES (%s,%s,%s)",
+                         (name, email, password)
+                        )
+
+            conn.commit()
+            return True
+
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
 
 

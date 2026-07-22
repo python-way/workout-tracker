@@ -1,6 +1,7 @@
 from flask import request
 
 from werkzeug.security import generate_password_hash, check_password_hash
+from workout_tracker.auth import token_required, generate_token
 
 from workout_tracker import app
 from workout_tracker.db.queries import ( 
@@ -18,7 +19,7 @@ from workout_tracker.db.queries import (
          # create_exe,
          # update_exe,
          # delete_exe,
-         # sign_up
+         sign_up,
 
          get_workouts,
          get_non_done_workouts,
@@ -30,12 +31,9 @@ from workout_tracker.db.queries import (
         )
 
 
-current_user = '1'
+############### Auth ############### 
 
-
-### Auth
-
-# @app.route("/login", methods=["POST"])
+@app.route("/register", methods=["POST"])
 def register():
     """ Signing up a new user """
     data = request.get_json()
@@ -47,17 +45,24 @@ def register():
     if not name or not password or not email:
         return {"message": "Name, email and password are required for registeration"}, 400
 
-    users = get_users()
-    if email in users.values():
+    users_query = get_users()
+    if not users_query:
+        return { "message": "Database query failed" }, 500
+
+    users = users_query.get("users")
+    if not users:
+        return { "message": "users not found" }, 500
+
+    if email in users:
         return {"message": f"Email {email} already exists" }, 400
 
-    success = sign_up(name,generate_password_hash(password), email)
+    success = sign_up(name, email, generate_password_hash(password))
     if not success:
         return { "message": "Database transaction failed" }, 500
 
     return { "message": "User created successfully"}, 201
 
-@app.route("/register", methods=["POST"])
+@app.route("/login", methods=["POST"])
 def login():
     """ Signing in user """
     data = request.get_json()
@@ -68,27 +73,28 @@ def login():
     if not email or not password:
         return {"message": "Email and password are required"}, 400
 
-    users = get_users() 
-    if email in users.values():
-        return {"message": f"Email {email} already exists" }, 400
+    users_query = get_users()
+    if not users_query:
+        return { "message": "Database query failed" }, 500
+
+    users = users_query.get("users")
+    users_data = users_query.get("users_data")
+    if not users or not users_data:
+        return { "message": "users/users_data not found" }, 500
+
+    if email not in users:
+        return {"message": f"Invalid credentials" }, 400
     
-     
-    user_password = get_user_password(email)
-    if not password or not check_password_hash(user_password, password):
+    user_id = users.get(email) 
+    user_credentials = users_data.get(user_id)
+    user_password = user_credentials.get("password")
+
+    if not user_password or not check_password_hash(user_password, password):
         return { "message": "Invalid credentials" }, 400
     
-    jwt_data = {
-                'id': user_id, 
-                'exp': dt.datetime.utcnow() + dt.timedelta(minutes=30)
-               }
-            
-    token = jwt.encode(
-                jwt_data,
-                app.config["SECRET_KEY"],
-                algorithm="HS256"
-            )
+    token = generate_token(user_id, minutes=30)
 
-    return str(token)
+    return { "token": token }, 200
 
 ############### Workout ###############
 
@@ -108,10 +114,11 @@ def create_workout():
     if not data or 'exercises' not in data or 'workout_name' not in data:
         return {"message": "Data provided is not complete"}, 400
 
-    users = get_users()
-    if not users:
+    users_query = get_users()
+    if not users_query:
         return {"message": "Database query failed"}, 500
 
+    users = users_query.get("users")
     if current_user not in users:
         return {"message": "User not found"}, 404
 
@@ -149,13 +156,6 @@ def schd_workout(workout_id):
     
     if not data or 'date' not in data:
         return { "message" : "Data not found" }, 400
-
-    users = get_users()
-    if not users:
-        return {"message": "Database query failed"}, 500
-
-    if current_user not in users:
-        return {"message": "User not found"}, 404
 
     workouts = get_workouts()
     if workouts is None:
@@ -384,14 +384,7 @@ def update_workout_exercise(workout_id):
     data = request.get_json()
     if not data or 'exercise' not in data:
         return {"message": "Data provided is not complete"}, 400
-    
-    users = get_users()
-    if not users:
-        return {"message": "Database query failed"}, 500
 
-    if current_user not in users:
-        return {"message": "User not found"}, 404
-    
     # Workout exist?
     workouts = get_workouts()
     if workouts is None:

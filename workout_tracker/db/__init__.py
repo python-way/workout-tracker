@@ -40,6 +40,7 @@ def init_db():
                                 user_id bigserial,
                                 name varchar(50),
                                 email varchar(255),
+                                password varchar(255),
                                 CONSTRAINT user_key PRIMARY KEY (user_id),
                                 CONSTRAINT user_email_unique UNIQUE (name, email));
                             """)

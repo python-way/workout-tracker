@@ -1,7 +1,8 @@
 import jwt
+import datetime as dt
+
 from functools import wraps
 from flask import request, jsonify
-
 from workout_tracker import app
 
 def token_required(f):
@@ -26,3 +27,16 @@ def token_required(f):
 
         return f(current_user, *args, **kargs)
     return decorated
+
+def generate_token(user_id, minutes):
+    jwt_data = {
+                'id': user_id, 
+                'exp': dt.datetime.utcnow() + dt.timedelta(minutes=30)
+               }
+            
+    return jwt.encode(
+                jwt_data,
+                app.config["SECRET_KEY"],
+                algorithm="HS256"
+            )
+
