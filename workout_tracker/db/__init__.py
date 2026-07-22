@@ -2,8 +2,10 @@ import os
 
 import psycopg2
 from psycopg2 import sql, OperationalError, errors
-
+from dotenv import load_dotenv
 from workout_tracker import app
+
+load_dotenv()
 
 DB_CONFIG = {
     "dbname": os.getenv("DB_NAME", "workout"),
