@@ -45,3 +45,43 @@ def get_users():
         if conn:
             conn.close()
 
+def get_user(filter_by, value):
+    conn = get_connection()
+
+    if filter_by.strip().lower() not in ['email', 'user_id']:
+        raise Exception("filter_by not in ['email' or 'user_id']")
+        return None
+
+    if filter_by == 'email':
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM users WHERE email = %s", (value,))
+                user = cur.fetchone()
+                if user:
+                    return {"user_id":user[0], "username":user[1], "email":user[2], "password":user[3]}
+                return None
+
+        except Exception as e:
+            conn.rollback()
+            app.logger.error(f"Dataase error: {e}")
+            return None
+        finally:
+            if conn:
+                conn.close()
+
+    if filter_by == 'user_id':
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM users WHERE user_id = %s", (value,))
+                user = cur.fetchone()
+                if user:
+                    return {"user_id":user[0], "username":user[1], "email":user[2], "password":user[3]}
+                return None
+
+        except Exception as e:
+            conn.rollback()
+            app.logger.error(f"Dataase error: {e}")
+            return None
+        finally:
+            if conn:
+                conn.close()

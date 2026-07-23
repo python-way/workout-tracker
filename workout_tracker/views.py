@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from workout_tracker.auth import token_required, generate_token
 
 from workout_tracker import app
+from workout_tracker.error import errors
 
 from workout_tracker.db.queries.workout import (
          create_workout_with_exercises,
@@ -32,9 +33,11 @@ from workout_tracker.db.queries.exercise import (
 
 from workout_tracker.db.queries.auth import ( 
          get_users,
-         sign_up
+         sign_up,
+         get_user
         )
 
+current_user = 1
 
 ############### Auth ############### 
 
@@ -42,28 +45,28 @@ from workout_tracker.db.queries.auth import (
 def register():
     """ Signing up a new user """
     data = request.get_json()
+    if not data:
+        return errors.INVALID_INPUT_422
+   
+    name, password, email = (
+            data.get('name'),
+            data.get('password'),
+            data.get('email')
+        )
+
+    if name is None or password is None or email is None:
+        return errors.INVALID_INPUT_422
+
+    name, password, email = name.strip(), password.strip(), email.strip() 
     
-    name = data.get('name')
-    password = data.get('password')
-    email = data.get('email')
-
-    if not name or not password or not email:
-        return {"message": "Name, email and password are required for registeration"}, 400
-
-    users_query = get_users()
-    if not users_query:
-        return { "message": "Database query failed" }, 500
-
-    users = users_query.get("users")
-    if not users:
-        return { "message": "users not found" }, 500
-
-    if email in users:
-        return {"message": f"Email {email} already exists" }, 400
+    user = get_user(filter_by="email", value=email)
+    if user:
+        return { "message": "User already exists" }, 409
 
     success = sign_up(name, email, generate_password_hash(password))
-    if not success:
-        return { "message": "Database transaction failed" }, 500
+
+    if success is None:
+        return errors.FAILED_TRANSACTION
 
     return { "message": "User created successfully"}, 201
 
@@ -71,36 +74,35 @@ def register():
 def login():
     """ Signing in user """
     data = request.get_json()
-
-    email = data.get('email')
-    password = data.get('password')
-
-    if not email or not password:
-        return {"message": "Email and password are required"}, 400
-
-    users_query = get_users()
-    if not users_query:
-        return { "message": "Database query failed" }, 500
-
-    users = users_query.get("users")
-    users_data = users_query.get("users_data")
-    if not users or not users_data:
-        return { "message": "users/users_data not found" }, 500
-
-    if email not in users:
-        return {"message": f"Invalid credentials" }, 400
+    if not data:
+        return errors.INVALID_INPUT_422
     
-    user_id = users.get(email) 
-    user_credentials = users_data.get(user_id)
-    user_password = user_credentials.get("password")
+    email, password = (
+            data.get('email'),
+            data.get('password')
+    )
 
-    if not user_password or not check_password_hash(user_password, password):
+    if email is None or password is None:
+        return errors.INVALID_INPUT_422
+
+    user = get_user(filter_by="email", value=email)
+    if not user:
+        return { "message": "user not found" }, 404
+
+    user_id, user_password = user.get("user_id"), user.get("password")
+    if user_id is None or user_password is None:
+        return {"message": "Invalid credintials"}, 404
+
+    if user_id is None or user_password is None:
+        return { "message" : "user not found" }, 404
+
+    if not check_password_hash(user_password, password):
         return { "message": "Invalid credentials" }, 400
-    
+
     token = generate_token(user_id, minutes=30)
 
     return { "token": token }, 200
-
+    
 ############### Workout ###############
 
 @app.route("/workout", methods=["POST"])
@@ -116,39 +118,39 @@ def create_workout():
                      }
     """
     data = request.get_json()
-    if not data or 'exercises' not in data or 'workout_name' not in data:
-        return {"message": "Data provided is not complete"}, 400
-
-    users_query = get_users()
-    if not users_query:
-        return {"message": "Database query failed"}, 500
-
-    users = users_query.get("users")
-    if current_user not in users:
-        return {"message": "User not found"}, 404
+    if not data:
+        return errors.INVALID_INPUT_422
 
     exercises = data.get('exercises')
     workout_name = data.get('workout_name')
+    
+    if exercises is None or workout_name is None:
+        return errors.INVALID_INPUT_422
 
-    db_exercises = get_exercises()
-    if db_exercises is None:
-        return {"message": "Database query failed"}, 500
-
-    for e in exercises:
-        e_name = e.get("name")
-        if not e_name:
-            return {"message" : "exercise name not found" }, 400
-
-        if e_name.title() not in db_exercises.values():
-            return { "message": f"Exercise {e_name} not found" }, 400
-
-    success = create_workout_with_exercises(workout_name=workout_name,user_id=current_user, exercises=exercises)
+    user = get_user(filter_by='user_id', value=current_user)
+    if not user:
+        return {"message": "User not found"}, 404
    
+    try:
+        exercises_names = ((exe.get('name').title(),) for exe in exercises)
+        db_exercises = get_exercises(filter_by="name", value=exercises_names) 
+        if db_exercises is None:
+            return { "message": "some exercises are not found" }, 400
+    except Exception as e:
+        app.logger.error(f"An error occured: {e}")
+        return { "message": "An error occured" }, 400
+    
+    #TODO: workoutname already exists
+
+    success = create_workout_with_exercises(workout_name, current_user, exercises)
+
     if not success:
-        return {"message": "Database transaction failed"}, 500
+        return errors.FAILED_TRANSACTION
 
     return { "message": "Workout created successfully" }, 201
 
+
+    
 
 @app.route("/workout/<workout_id>/schedule", methods=["PUT"])
 def schd_workout(workout_id):
