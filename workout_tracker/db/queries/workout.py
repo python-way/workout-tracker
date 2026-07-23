@@ -6,15 +6,15 @@ from workout_tracker import app
 
 def create_workout_with_exercises(
         workout_name,
-        user_id,
+        workout_id,
         exercises
         ):
     conn = get_connection()
 
     try:
         with conn.cursor() as cur:
-            cur.execute( "INSERT INTO workouts (workout_name, user_id, status) VALUES (%s,%s,%s) RETURNING  workout_id" ,
-                         (workout_name, user_id, 'New')
+            cur.execute( "INSERT INTO workouts (workout_name, workout_id, status) VALUES (%s,%s,%s) RETURNING  workout_id" ,
+                         (workout_name, workout_id, 'New')
                         )
             workout_id = cur.fetchone()[0]
             
@@ -229,4 +229,28 @@ def mark_workout_done(workout_id):
         if conn:
             conn.close()
 
+def get_workout(filter_by, value):
+
+    conn = get_connection()
+
+    if filter_by.strip().lower() not in ['name', 'id']:
+        raise Exception("filter_by not in ['name' or 'id']")
+        return None
+
+    if filter_by == 'name':
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM workouts WHERE workout_name = %s", (value,))
+                workout = cur.fetchone()
+                if workout:
+                    return {"id":workout[0], "workout_name":workout[1], "user_id":workout[2], "status":workout[3], "schedule_time": workout[4]}
+                return None
+
+        except Exception as e:
+            conn.rollback()
+            app.logger.error(f"Dataase error: {e}")
+            return None
+        finally:
+            if conn:
+                conn.close()
 

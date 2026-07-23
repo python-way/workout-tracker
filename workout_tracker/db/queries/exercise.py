@@ -92,7 +92,7 @@ def get_exercises(filter_by, value):
             with conn.cursor() as cur:
                found_exercises = []
                for exe in value:
-                   cur.execute(" SELECT * FROM exercises WHERE name = %s ", exe)
+                   cur.execute(" SELECT * FROM exercises WHERE name = %s ", (exe.title(),))
                    found_exe = cur.fetchone()
                    if found_exe is None:
                        return None

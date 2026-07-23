@@ -31,7 +31,7 @@ def token_required(f):
 def generate_token(user_id, minutes):
     jwt_data = {
                 'id': user_id, 
-                'exp': dt.datetime.utcnow() + dt.timedelta(minutes=30)
+                'exp': dt.datetime.now(dt.UTC)
                }
             
     return jwt.encode(
