@@ -10,7 +10,10 @@ def app():
     
     from workout_tracker.db import init_db
     from workout_tracker.db.seeder import seeder
-    import workout_tracker.views
+    import workout_tracker.routes.auth
+    import workout_tracker.routes.exercise
+    import workout_tracker.routes.workout
+
     
     init_db()
     seeder()

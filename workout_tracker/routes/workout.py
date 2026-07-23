@@ -1,7 +1,8 @@
 from flask import request
 
 from workout_tracker import app
-from workout_tracker.error import errors
+
+import workout_tracker.error.errors as error
 
 from workout_tracker.db.queries.auth import get_user
 from workout_tracker.db.queries.exercise import get_exercises
@@ -43,34 +44,34 @@ def create_workout():
     """
     data = request.get_json()
     if not data:
-        return errors.INVALID_INPUT_422
+        return error.NO_INPUT_400
 
     exercises = data.get('exercises')
     workout_name = data.get('workout_name')
     
     if exercises is None or workout_name is None:
-        return errors.INVALID_INPUT_422
+        return error.INVALID_INPUT_422
 
     user = get_user(filter_by='user_id', value=current_user)
     if not user:
-        return {"message": "User not found"}, 404
+        return error.UNAUTHORIZED
     
     workout = get_workout(filter_by="name", value=workout_name)
     if workout:
-        return { "message" : "Workout already exists" }, 409
+        return error.ALREADY_EXIST
 
     valid_exercises = [exe.get('name') for exe in exercises]
     if None in valid_exercises:
-        return errors.INVALID_INPUT_404
+        return error.INVALID_INPUT_404
 
     db_exercises = get_exercises(filter_by="name", value=valid_exercises) 
     if db_exercises is None:
-        return { "message": "some exercises are not found" }, 400
+        return error.NOT_FOUND_404
     
     success = create_workout_with_exercises(workout_name, current_user, exercises)
 
     if not success:
-        return errors.FAILED_TRANSACTION
+        return error.FAILED_TRANSACTION_500
 
     return { "message": "Workout created successfully" }, 201
 

@@ -65,42 +65,61 @@ def delete_exe(exe_name):
             conn.close()
 
 
-def get_exercises():
+# def get_exercise():
+#     conn = get_connection()
+#
+#     try:
+#         with conn.cursor() as cur:
+#
+#            cur.execute(" SELECT * FROM exercises; ")
+#            exercises = cur.fetchall()
+#            exercises = {f"{exercise[0]}":exercise[1] for exercise in exercises}
+#            return exercises
+#     except Exception as e:
+#         conn.rollback()
+#         app.logger.error(f"Dataase error: {e}")
+#         return None
+#     finally:
+#         if conn:
+#             conn.close()
+#
+
+def get_exercises(filter_by=None, value=None):
     conn = get_connection()
+   
+    if filter_by:
+        if filter_by.strip().lower() == "name":
 
-    try:
-        with conn.cursor() as cur:
+            if not value:
+                raise ValueError("value must be iterable not None")
+            
+            try:
+                with conn.cursor() as cur:
+                   found_exercises = []
+                   for exe in value:
+                       cur.execute(" SELECT * FROM exercises WHERE name = %s ", (exe.title(),))
+                       found_exe = cur.fetchone()
+                       if found_exe is None:
+                           return None
+                       found_exercises.append(found_exe)
 
-           cur.execute(" SELECT * FROM exercises; ")
-           exercises = cur.fetchall()
-           exercises = {f"{exercise[0]}":exercise[1] for exercise in exercises}
-           return exercises
-    except Exception as e:
-        conn.rollback()
-        app.logger.error(f"Dataase error: {e}")
-        return None
-    finally:
-        if conn:
-            conn.close()
-
-def get_exercises(filter_by, value):
-    conn = get_connection()
-    
-    if filter_by.strip().lower() == "name":
-        
+                   return {f"{exe[1]}": {"id":exe[0], "description":exe[1], "category":exe[2], "muscle":exe[3]}
+                            for exe in found_exercises}
+            except Exception as e:
+                conn.rollback()
+                app.logger.error(f"Dataase error: {e}")
+                return None
+            finally:
+                if conn:
+                    conn.close()
+    else:
         try:
             with conn.cursor() as cur:
-               found_exercises = []
-               for exe in value:
-                   cur.execute(" SELECT * FROM exercises WHERE name = %s ", (exe.title(),))
-                   found_exe = cur.fetchone()
-                   if found_exe is None:
-                       return None
-                   found_exercises.append(found_exe)
 
+               cur.execute(" SELECT * FROM exercises; ")
+               exercises = cur.fetchall()
                return {f"{exe[1]}": {"id":exe[0], "description":exe[1], "category":exe[2], "muscle":exe[3]}
-                        for exe in found_exercises}
-               return True
+                       for exe in exercises}
         except Exception as e:
             conn.rollback()
             app.logger.error(f"Dataase error: {e}")

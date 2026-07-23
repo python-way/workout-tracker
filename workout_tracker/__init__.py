@@ -7,7 +7,14 @@ app = Flask(__name__)
 
 load_dotenv()
 
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY environment variable must be set. "
+        "Generate one with: python -c 'import secrets; print(secrets.token_hex(32))'"
+    )
+
+app.config["SECRET_KEY"] = SECRET_KEY
 
 from workout_tracker.db import init_db
 init_db()

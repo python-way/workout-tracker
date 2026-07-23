@@ -1,14 +1,14 @@
 from flask import request
 
 from workout_tracker import app
-from workout_tracker.error import errors
+import workout_tracker.error.errors as error
 
 from workout_tracker.db.queries.exercise import (
          create_exe,
          update_exe,
-         get_exercises,
          delete_exe,
-        )
+         get_exercises,
+    )
 
 ############### Exercises  ###############
 
@@ -21,23 +21,20 @@ def add_exercise():
     """
     data = request.get_json()
     if not data:
-        return {"message" : "Data not found"}, 400
+        return error.NO_INPUT_400
 
     e_name = data.get("name")
     if not e_name:
-        return {"message": "Exercise name is not found" }, 400
+        return error.INVALID_INPUT_422
 
-    db_exercises = get_exercises()
-    if not db_exercises:
-        return {"message": "Database query failed"}, 500
-    
-    if e_name.title() in db_exercises.values():
-        return {"message": f"Exercise {e_name} already exists" }, 400
+    db_exercise = get_exercises(filter_by="name", value=[e_name])
+    if db_exercise:
+        return error.ALREADY_EXIST
 
-    exercise = {"name":data.get("name"), "description":data.get("description"), "category":data.get("category"), "muscle":data.get("muscle")}
+    exercise = {"name":e_name, "description":data.get("description"), "category":data.get("category"), "muscle":data.get("muscle")}
     success = create_exe(exercise)
     if not success:
-        return {"message": "Database transaction failed" }, 500
+        return error.FAILED_TRANSACTION_500
 
     return {"message" : "Exercise created successfully"}, 201
 
@@ -50,44 +47,35 @@ def update_exercise():
     """
     data = request.get_json()
     if not data:
-        return {"message" : "Data not found"}, 400
+        return error.NO_INPUT_400
 
     e_name = data.get("name")
     if not e_name:
-        return {"message": "Exercise name is not found" }, 400
+        return error.INVALID_INPUT_422
 
-    db_exercises = get_exercises()
-    if not db_exercises:
-        return {"message": "Database query failed"}, 500
-    
-    if e_name.title() not in db_exercises.values():
-        return {"message": f"Exercise {e_name} does not exists" }, 400
+    db_exercise = get_exercises(filter_by="name", value=[e_name])
+    if db_exercise is None:
+        return error.NOT_FOUND_404
     
     exercise = {"name":data.get("name"), "description":data.get("description"), "category":data.get("category"), "muscle":data.get("muscle")}
     success = update_exe(exercise)
     if not success:
-        return {"message": "Database transaction failed" }, 500
+        return error.FAILED_TRANSACTION_500
 
     return {"message" : "Exercise updated successfully"}, 200
-
 
 @app.route("/exercise/<exercise_name>", methods=["DELETE"])
 def delete_exercise(exercise_name):
     """ Delete an exercise """
- 
-    db_exercises = get_exercises()
-    if not db_exercises:
-        return {"message": "Database query failed"}, 500
-    
-    if exercise_name.title() not in db_exercises.values():
-        return {"message": f"Exercise {exercise_name} does not exists" }
+    db_exercise = get_exercises(filter_by="name", value=[exercise_name])
+    if db_exercise is None:
+        return error.NOT_FOUND_404
     
     success = delete_exe(exercise_name)
     if not success:
-        return {"message": "Database transaction failed" }, 500
+        return error.FAILED_TRANSACTION_500
     
     return {"message" : "Exercise deleted successfully" }, 204
-   
 
 @app.route("/exercise", methods=["GET"])
 def list_exercises():
@@ -96,5 +84,5 @@ def list_exercises():
     if not db_exercises:
         return {"message": "Database query failed"}, 500
     
-    return { "Exercises": db_exercises }, 200
+    return db_exercises , 200
 

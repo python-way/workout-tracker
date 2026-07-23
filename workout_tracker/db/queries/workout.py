@@ -6,15 +6,15 @@ from workout_tracker import app
 
 def create_workout_with_exercises(
         workout_name,
-        workout_id,
+        user_id,
         exercises
         ):
     conn = get_connection()
 
     try:
         with conn.cursor() as cur:
-            cur.execute( "INSERT INTO workouts (workout_name, workout_id, status) VALUES (%s,%s,%s) RETURNING  workout_id" ,
-                         (workout_name, workout_id, 'New')
+            cur.execute( "INSERT INTO workouts (workout_name, user_id, status) VALUES (%s,%s,%s) RETURNING  workout_id" ,
+                         (workout_name, user_id, 'New')
                         )
             workout_id = cur.fetchone()[0]
             
@@ -49,7 +49,7 @@ def delete_workout_with_exercises(workout_id):
 
     try: 
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM workouts WHERE workout_id= %s", (workout_id,))
+            cur.execute("DELETE FROM workouts WHERE workout_id = %s", (workout_id,))
             conn.commit()
             return True
     except Exception as e:

@@ -1,7 +1,7 @@
 from flask import request
 
 from werkzeug.security import generate_password_hash, check_password_hash
-from workout_tracker.auth import generate_token
+from workout_tracker.conf.auth import generate_token
 
 from workout_tracker import app
 
