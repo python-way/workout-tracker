@@ -84,5 +84,5 @@ def list_exercises():
     if not db_exercises:
         return {"message": "Database query failed"}, 500
     
-    return db_exercises , 200
+    return { "exercises": db_exercises } , 200 
 

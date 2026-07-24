@@ -35,7 +35,7 @@ def create_workout_with_exercises(
                             junctions
                         )
             conn.commit()
-            return True
+            return workout_id
     except Exception as e:
         conn.rollback()
         app.logger.error(f"Database error: {e}")

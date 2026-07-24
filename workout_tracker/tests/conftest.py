@@ -1,3 +1,4 @@
+import sys
 import pytest
 from workout_tracker import app as global_app_obj
 
@@ -6,14 +7,14 @@ def app():
     global_app_obj.config.update({
         "TESTING": True,
     })
-    
-    from workout_tracker.db import init_db
-    from workout_tracker.db.seeder import seeder
+
     import workout_tracker.routes.auth
     import workout_tracker.routes.exercise
     import workout_tracker.routes.workout
 
-    
+
+    from workout_tracker.db import init_db
+    from workout_tracker.db.seeder import seeder
     init_db()
     seeder()
     

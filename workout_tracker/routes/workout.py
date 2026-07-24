@@ -67,12 +67,12 @@ def create_workout():
     if db_exercises is None:
         return error.NOT_FOUND_404
     
-    success = create_workout_with_exercises(workout_name, current_user, exercises)
+    workout_id = create_workout_with_exercises(workout_name, current_user, exercises)
 
-    if not success:
+    if workout_id is None:
         return error.FAILED_TRANSACTION_500
 
-    return { "message": "Workout created successfully" }, 201
+    return { "message": "Workout created successfully", "data": {"workout_id": workout_id} }, 201
 
 
 @app.route("/workout/<workout_id>/schedule", methods=["PUT"])
@@ -80,7 +80,7 @@ def schd_workout(workout_id):
     """ 
         Scheduling a workout that's been created previously 
 
-        Ex-Request Data: { 'date': '2026:07:21 01:00 EST' }
+        Ex-Request Data: { 'date': '2026-07-21 01:00 EST' }
     """
     data = request.get_json()
     if not data:
