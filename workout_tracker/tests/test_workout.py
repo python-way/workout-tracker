@@ -10,3 +10,4 @@ def test_create_workout(client):
     assert res.status_code == 409
     res = client.post('/workout', json={"exercises": [{"name":"push-"},{"name":"squat", "sets":2, "reps":3},{"name":"plank"}], "workout_name":w2_name})
     assert res.status_code == 404
+

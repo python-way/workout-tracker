@@ -4,7 +4,7 @@ from workout_tracker import app
 
 import workout_tracker.error.errors as error
 
-from workout_tracker.db.queries.auth import get_user
+from workout_tracker.db.queries.auth import get_users
 from workout_tracker.db.queries.exercise import get_exercises
 from workout_tracker.db.queries.workout import (
          create_workout_with_exercises,
@@ -51,7 +51,7 @@ def create_workout():
     if exercises is None or workout_name is None:
         return error.INVALID_INPUT_422
 
-    user = get_user(filter_by='user_id', value=current_user)
+    user = get_users(filter_by='user_id', value=current_user)
     if not user:
         return error.UNAUTHORIZED
     
