@@ -11,20 +11,19 @@ from workout_tracker.db.queries.workout import (
          delete_workout_with_exercises,
 
          add_exercise_to_workout,
-         update_workout_exercise,
+         update_workout_exe,
          delete_exercise_from_workout,
 
-         get_workout,
          get_workouts,
-         get_non_done_workouts,
-         get_exercises_by_workout,
-
+         get_workout_exercises,
+         list_non_done_workouts,
          schedule_workout,
          mark_workout_pending,
          mark_workout_done,
 
        )
 
+from workout_tracker.conf.auth import token_required
 
 current_user = 1
 
@@ -56,15 +55,15 @@ def create_workout():
     if not user:
         return error.UNAUTHORIZED
     
-    workout = get_workout(filter_by="name", value=workout_name)
+    workout = get_workouts(filter_by="name", value=workout_name)
     if workout:
         return error.ALREADY_EXIST
 
-    valid_exercises = [exe.get('name') for exe in exercises]
-    if None in valid_exercises:
+    valid_exercises_names = [exe.get('name') for exe in exercises]
+    if None in valid_exercises_names:
         return error.INVALID_INPUT_404
 
-    db_exercises = get_exercises(filter_by="name", value=valid_exercises) 
+    db_exercises = get_exercises(filter_by="name", value=valid_exercises_names) 
     if db_exercises is None:
         return error.NOT_FOUND_404
     
@@ -76,8 +75,6 @@ def create_workout():
     return { "message": "Workout created successfully" }, 201
 
 
-    
-
 @app.route("/workout/<workout_id>/schedule", methods=["PUT"])
 def schd_workout(workout_id):
     """ 
@@ -86,85 +83,73 @@ def schd_workout(workout_id):
         Ex-Request Data: { 'date': '2026:07:21 01:00 EST' }
     """
     data = request.get_json()
+    if not data:
+        return error.NO_INPUT_400
     
-    if not data or 'date' not in data:
-        return { "message" : "Data not found" }, 400
+    date = data.get("date")
+    if date is None:
+        return error.INVALID_INPUT_422
 
-    workouts = get_workouts()
-    if workouts is None:
-        return { "message": "Database query failed" }, 500
+    workout = get_workouts(filter_by="id", value=workout_id)
+    if workout is None:
+        return error.NOT_FOUND_404
 
-    if workout_id not in workouts:
-        return { "message": "workout not found" }, 404
-
-    success = schedule_workout(workout_id, data.get('date'))
+    success = schedule_workout(workout_id, date)
     
     if not success:
-        return {"message": "Database transaction failed"}, 500
+        return error.FAILED_TRANSACTION_500
 
-    return { "message": "workout scheduled successfully" }, 200
+    return { "message": "Workout scheduled successfully" }, 200
 
 
 @app.route("/workout/<workout_id>/start", methods=["PUT"])
 def start_workout(workout_id):
     """ Marks workout as pending """
-    workouts = get_workouts()
-    if workouts is None:
-        return { "message": "Database query failed" }, 500
-
-    if workout_id not in workouts:
-        return { "message": "workout not found" }, 404
+    workout = get_workouts(filter_by="id", value=workout_id)
+    if workout is None:
+        return error.NOT_FOUND_404
 
     success = mark_workout_pending(workout_id)
- 
     if not success:
-        return {"message": "Database transaction failed"}, 500
+        return error.FAILED_TRANSACTION_500
 
-    return { "message" : "workout started successfully" } , 200
+    return { "message" : "Workout started successfully" } , 200
 
 
 @app.route("/workout/<workout_id>/do", methods=["PUT"])
 def do_workout(workout_id):
     """ Marks workout as done """
-    workouts = get_workouts()
-    if workouts is None:
-        return { "message": "Database query failed" }, 500
-
-    if workout_id not in workouts:
-        return { "message": "workout not found" }, 404
+    workout = get_workouts(filter_by="id", value=workout_id)
+    if workout is None:
+        return error.NOT_FOUND_404
 
     success = mark_workout_done(workout_id)
- 
     if not success:
-        return {"message": "Database transaction failed"}, 500
+        return error.FAILED_TRANSACTION_500
 
-    return { "message" : "workout done successfully" } , 200
+    return { "message" : "Workout finished successfully" } , 200
 
 @app.route("/workout/<workout_id>", methods=["DELETE"])
 def delete_workout(workout_id):
     """ Deleting a workout """
-    workouts = get_workouts()
-    if workouts is None:
-        return { "message": "Database query failed" }, 500
+    workout = get_workouts(filter_by="id", value=workout_id)
+    if workout is None:
+        return error.NOT_FOUND_404
 
-    if workout_id not in workouts:
-        return { "message": "workout not found" }, 404
-
-    success = delete_workout_with_exercises(workout_id=workout_id)
+    success = delete_workout_with_exercises(workout_id)
     if not success:
-        return {"message": "Database transaction failed"}, 500
+        return error.FAILED_TRANSACTION_500
 
-    return { "message" : "workout deleted successfully" }, 204
+    return { "message" : "Workout deleted successfully" }, 204
 
 @app.route("/workout", methods=["GET"])
 def list_workouts():
     """ List all non-done workouts """
-    workouts = get_non_done_workouts() 
+    workouts = list_non_done_workouts() 
     if workouts is None:
         return { "message": "Database query failed" }, 500
     
-    return {"workouts": workouts}, 200
-
+    return workouts, 200
 
 
 ############### Workout's exercises ###############
@@ -177,47 +162,34 @@ def add_workout_exercise(workout_id):
     Ex-Request Data: {"exercise": { "name":"Exercise", "sets":3, "reps":4, "weight":10 } }
     """
     data = request.get_json()
-    if not data or 'exercise' not in data:
-        return { "message" : "Data not found" }, 400
-    
-    # Exercise exist?
+    if not data:
+        return error.NO_INPUT_400
+
     exercise = data.get("exercise")
+    if exercise is None:
+        return error.INVALID_INPUT_422
+
     e_name = exercise.get("name")
-    if not e_name:
-        return { "message" "Exercise name not found" }, 400
+    if e_name is None:
+        return error.INVALID_INPUT_422
 
-    db_exercises = get_exercises()
-    if db_exercises is None:
-        return {"message": "Database query failed"}, 500
-
-    if e_name.title() not in db_exercises.values():
-        return { "message": f"Exercise {e_name} not found" }, 400
+    db_exercise = get_exercises(filter_by="name", value=[e_name])
+    if db_exercise is None:
+        return error.NOT_FOUND_404
         
-    # Workout exist?
-    workouts = get_workouts()
-    if workouts is None:
-        return { "message": "Database query failed" }, 500
+    workout = get_workouts(filter_by="id", value=workout_id)
+    if workout is None:
+        return error.NOT_FOUND_404
 
-    if workout_id not in workouts:
-        return { "message": "workout not found" }, 404
-
-    # Exercise alreayd exist in the workout plan?  
-    db_query = get_exercises_by_workout(workout_id)
-    if not db_query:
-        return {"message": "Database query failed"}, 500
-
-    db_workout_exercises = db_query.get("exercises")
-    if not db_workout_exercises:
-        return {"message" : "No exercieses found" }, 404
-
-    if e_name.title() in db_workout_exercises.values():
-        return { "message": f"Exercise {e_name} already exist" }, 400
+    db_workout_exercise = get_workout_exercises(workout_id, filter_by="exercise_name", value=[e_name])
+    if db_workout_exercise:
+        return error.ALREADY_EXIST
 
     success = add_exercise_to_workout(workout_id=workout_id, exe=exercise)
     if not success:
-        return {"message": "Database transaction failed"}, 500
+        return error.FAILED_TRANSACTION_500
 
-    return { "message": "exercise added successfully" }, 200
+    return { "message": "Exercise added successfully" }, 200
  
 
 @app.route("/workout/<workout_id>/exercise", methods=["PUT"])
@@ -228,71 +200,58 @@ def update_workout_exercise(workout_id):
         Ex-Request Data: { "exercise": {"name":"Exercise", "sets":3, "reps":3, "weight":5 }
     """ 
     data = request.get_json()
-    if not data or 'exercise' not in data:
-        return {"message": "Data provided is not complete"}, 400
+    if not data:
+        return error.NO_INPUT_400
 
-    # Workout exist?
-    workouts = get_workouts()
-    if workouts is None:
-        return { "message": "Database query failed" }, 500
+    exercise = data.get("exercise")
+    if exercise is None:
+        return error.INVALID_INPUT_422
 
-    if workout_id not in workouts:
-        return { "message": "workout not found" }, 404
-    
-    exercise = data.get('exercise')
     e_name = exercise.get("name")
-    if not e_name:
-        return {"message" : "exercise name not found" }, 400
+    if e_name is None:
+        return error.INVALID_INPUT_422
+          
+    workout = get_workouts(filter_by="id", value=workout_id)
+    if workout is None:
+        return error.NOT_FOUND_404
+
+    db_workout_exercise = get_workout_exercises(workout_id, filter_by="exercise_name", value=[e_name])
+    if db_workout_exercise is None:
+        return error.NOT_FOUND_404
+
+    sets = exercise.get('sets')
+    reps = exercise.get('reps')
+    weight = exercise.get('weight')
+
+    if sets is None:
+        exercise["sets"] = db_workout_exercise.get(workout_id).get('sets')
+    if reps is None:
+        exercise["reps"] = db_workout_exercise.get(workout_id).get('reps')
+    if weight is None:
+        exercise["weight"] = db_workout_exercise.get(workout_id).get('weight')
     
-    # Exercise exist in the workout plan?
-    db_query = get_exercises_by_workout(workout_id)
-    if not db_query:
-        return {"message": "Database query failed"}, 500
 
-    db_exercises = db_query.get("exercises")
-    db_exercises_data = db_query.get("exercises_data")
-
-    if not db_exercises or not db_exercises_data:
-        return {"message" : "No exercieses found" }, 404
-
-    if e_name.title() not in db_exercises.values():
-        return { "message": f"Exercise {e_name} not found" }, 400
-   
-    exercise['sets'] = exercise.get("sets") if exercise.get("sets") else db_exercises_data.get(e_name.title()).get("sets")
-    exercise['reps'] = exercise.get("reps") if exercise.get("reps") else db_exercises_data.get(e_name.title()).get("reps")
-    exercise['weight'] = exercise.get("weight") if exercise.get("weight") else db_exercises_data.get(e_name.title()).get("weight")
-
-    success = update_workout_exercise(workout_id=workout_id, exe=exercise)
+    success = update_workout_exe(workout_id, exercise)
     if not success:
-        return {"message": "Database transaction failed"}, 500
+        return error.FAILED_TRANSACTION_500
 
-    return { "message": "Plan updated successfully" }, 200
+    return { "message": "Workout updated successfully" }, 200
+
+
 
 @app.route("/workout/<workout_id>/exercise/<exercise_name>", methods=["DELETE"])
 def delete_workout_exercise(workout_id, exercise_name):
     """ Deleting workout's exercise """
-    workouts = get_workouts()
-    if workouts is None:
-        return { "message": "Database query failed" }, 500
+    workout = get_workouts(filter_by="id", value=workout_id)
+    if workout is None:
+        return error.NOT_FOUND_404
 
-    if workout_id not in workouts:
-        return { "message": "workout not found" }, 404
-    
-    # Exercise exist in the workout plan?
-    db_query = get_exercises_by_workout(workout_id)
-    if not db_query:
-        return {"message": "Database query failed"}, 500
+    db_workout_exercise = get_workout_exercises(workout_id, filter_by="exercise_name", value=[exercise_name])
+    if db_workout_exercise is None:
+        return error.NOT_FOUND_404
 
-    db_exercises = db_query.get("exercises")
-    if not db_exercises:
-        return {"message" : "No exercieses found" }, 404
-
-    if exercise_name.title() not in db_exercises.values():
-        return { "message": f"Exercise {exercise_name} not found" }, 400
-
-    success = delete_exercise_from_workout(workout_id=workout_id, exe_name=exercise_name)
+    success = delete_exercise_from_workout(workout_id, exercise_name)
     if not success:
-        return {"message": "Database transaction failed"}, 500
+        return error.FAILED_TRANSACTION_500
     
-    return {"message": "exercise deleted from workout successfully"}, 204
-
+    return {"message": "Exercise deleted from workout successfully"}, 204

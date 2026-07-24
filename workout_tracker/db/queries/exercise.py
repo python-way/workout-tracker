@@ -65,24 +65,6 @@ def delete_exe(exe_name):
             conn.close()
 
 
-# def get_exercise():
-#     conn = get_connection()
-#
-#     try:
-#         with conn.cursor() as cur:
-#
-#            cur.execute(" SELECT * FROM exercises; ")
-#            exercises = cur.fetchall()
-#            exercises = {f"{exercise[0]}":exercise[1] for exercise in exercises}
-#            return exercises
-#     except Exception as e:
-#         conn.rollback()
-#         app.logger.error(f"Dataase error: {e}")
-#         return None
-#     finally:
-#         if conn:
-#             conn.close()
-#
 
 def get_exercises(filter_by=None, value=None):
     conn = get_connection()

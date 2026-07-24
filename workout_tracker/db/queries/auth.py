@@ -45,14 +45,16 @@ def get_users():
         if conn:
             conn.close()
 
-def get_user(filter_by, value):
+def get_users(filter_by, value):
     conn = get_connection()
     if filter_by:
-        if value == None:
-            raise ValueError("value should not be None")
-
         if filter_by.strip().lower() not in ['email', 'user_id']:
             raise Exception("filter_by not in ['email' or 'user_id']")
+
+        if value == None:
+            raise ValueError("value should not be None")
+        
+        #### Filter by email ####
 
         if filter_by == 'email':
             try:
@@ -71,6 +73,8 @@ def get_user(filter_by, value):
                 if conn:
                     conn.close()
 
+        #### Filter by id ####
+
         if filter_by == 'user_id':
             try:
                 with conn.cursor() as cur:
@@ -87,3 +91,23 @@ def get_user(filter_by, value):
             finally:
                 if conn:
                     conn.close()
+    else:
+        #### All users ####
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute(" SELECT * FROM users; ")
+                users = cur.fetchall()
+                us = {f"{user[2]}": str(user[0]) for user in users}
+                us_data = {f"{user[0]}": {"name": user[1], "email": user[2], "password": user[3] } for user in users}
+
+                return {"users":us, "users_data": us_data}
+        except Exception as e:
+            conn.rollback()
+            app.logger.error(f"Dataase error: {e}")
+            return None
+        finally:
+            if conn:
+                conn.close()
+
+

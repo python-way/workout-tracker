@@ -85,7 +85,7 @@ def add_exercise_to_workout(workout_id, exe):
         if conn:
             conn.close()
 
-def update_workout_exercise(workout_id, exe):
+def update_workout_exe(workout_id, exe):
     conn = get_connection()
 
     try:
@@ -123,24 +123,7 @@ def delete_exercise_from_workout(workout_id, exe_name):
             conn.close()
 
 
-def get_workouts():
-    conn = get_connection()
-
-    try:
-        with conn.cursor() as cur:
-            cur.execute(" SELECT * FROM workouts; ")
-            workouts = cur.fetchall()
-            workouts = {f"{workout[0]}": workout[1] for workout in workouts}
-            return workouts
-    except Exception as e:
-        conn.rollback()
-        app.logger.error(f"Dataase error: {e}")
-        return None
-    finally:
-        if conn:
-            conn.close()
-
-def get_non_done_workouts():
+def list_non_done_workouts():
     conn = get_connection()
 
     try:
@@ -152,28 +135,6 @@ def get_non_done_workouts():
     except Exception as e:
         conn.rollback()
         app.logger.error(f"Dataase error: {e}")
-        return None
-    finally:
-        if conn:
-            conn.close()
-
-
-def get_exercises_by_workout(workout_id):
-    conn = get_connection()
-
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM workout_exercises WHERE workout_id = %s", (workout_id,))
-            exercises = cur.fetchall()
-            exs = {f"{exercise[0]}":exercise[1] for exercise in exercises}
-            exs_data = {f"{exercise[1]}": {"sets":exercise[2],"reps":exercise[3],"weight":exercise[4]} for exercise in exercises}
-
-            conn.commit()
-            return {"exercises":exs, "exercises_data":exs_data}
-
-    except Exception as e:
-        conn.rollback()
-        app.logger.error(f"Database error: {e}")
         return None
     finally:
         if conn:
@@ -229,23 +190,63 @@ def mark_workout_done(workout_id):
         if conn:
             conn.close()
 
-def get_workout(filter_by, value):
+def get_workouts(filter_by=None, value=None):
 
     conn = get_connection()
+    if filter_by:
+        if value is None:
+            raise ValueError("value should not be None")
 
-    if filter_by.strip().lower() not in ['name', 'id']:
-        raise Exception("filter_by not in ['name' or 'id']")
-        return None
+        if filter_by.strip().lower() not in ['name', 'id']:
+            raise Exception("filter_by not in ['name' or 'id']")
+            return None
+        
+        #### Filter by name ####
 
-    if filter_by == 'name':
+        if filter_by == 'name':
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM workouts WHERE workout_name = %s", (value,))
+                    workout = cur.fetchone()
+                    if workout:
+                        return {"id":workout[0], "workout_name":workout[1], "user_id":workout[2], "status":workout[3], "schedule_time": workout[4]}
+                    return None
+
+            except Exception as e:
+                conn.rollback()
+                app.logger.error(f"Dataase error: {e}")
+                return None
+            finally:
+                if conn:
+                    conn.close()
+
+        #### Filter by id ####
+
+        elif filter_by == 'id':
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM workouts WHERE workout_id = %s", (value,))
+                    workout = cur.fetchone()
+                    if workout:
+                        return {"id":workout[0], "workout_name":workout[1], "user_id":workout[2], "status":workout[3], "schedule_time": workout[4]}
+                    return None
+
+            except Exception as e:
+                conn.rollback()
+                app.logger.error(f"Dataase error: {e}")
+                return None
+            finally:
+                if conn:
+                    conn.close()
+    else:
+        #### All workouts ####
+
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT * FROM workouts WHERE workout_name = %s", (value,))
-                workout = cur.fetchone()
-                if workout:
-                    return {"id":workout[0], "workout_name":workout[1], "user_id":workout[2], "status":workout[3], "schedule_time": workout[4]}
-                return None
-
+                cur.execute(" SELECT * FROM workouts; ")
+                workouts = cur.fetchall()
+                workouts = {f"{workout[0]}": workout[1] for workout in workouts}
+                return workouts
         except Exception as e:
             conn.rollback()
             app.logger.error(f"Dataase error: {e}")
@@ -254,3 +255,52 @@ def get_workout(filter_by, value):
             if conn:
                 conn.close()
 
+
+def get_workout_exercises(workout_id, filter_by=None, value=None):
+    conn = get_connection()
+   
+    if filter_by:
+        if filter_by.strip().lower() not in ['exercise_name']:
+            raise ValueError("filter_by is not valid. ['workout_id' or 'exercise_name']")
+
+        if value is None:
+            raise ValueError("value should be iterable not None")
+            
+        try:
+            with conn.cursor() as cur:
+               found_workout_exercises = []
+               for exe in value:
+                   cur.execute(" SELECT * FROM workout_exercises WHERE workout_id = %s AND exercise_name = %s ", (workout_id, exe.title()))
+                   found_workout_exe = cur.fetchone()
+                   if found_workout_exe is None:
+                       return None
+                   found_workout_exercises.append(found_workout_exe)
+
+               return {f"{w_exe[0]}": {"exercise_name":w_exe[1], "sets":w_exe[2], "reps":w_exe[3], "weight":w_exe[4]}
+                        for w_exe in found_workout_exercises}
+        except Exception as e:
+            conn.rollback()
+            app.logger.error(f"Dataase error: {e}")
+            return None
+        finally:
+            if conn:
+                conn.close()
+
+    else: 
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM workout_exercises WHERE workout_id = %s", (workout_id,))
+                workout_exercises = cur.fetchall()
+
+                return {f"{w_exe[0]}": {"exercise_name":w_exe[1], "sets":w_exe[2], "reps":w_exe[3], "weight":w_exe[4]}
+                        for w_exe in workout_exercises}
+
+        except Exception as e:
+            conn.rollback()
+            app.logger.error(f"Database error: {e}")
+            return None
+        finally:
+            if conn:
+                conn.close()
+
+              

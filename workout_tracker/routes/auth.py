@@ -8,7 +8,7 @@ from workout_tracker import app
 
 from workout_tracker.db.queries.auth import ( 
          sign_up,
-         get_user
+         get_users
         )
 
 import workout_tracker.error.errors as error
@@ -33,7 +33,7 @@ def register():
 
     name, password, email = name.strip(), password.strip(), email.strip() 
     
-    user = get_user(filter_by="email", value=email)
+    user = get_users(filter_by="email", value=email)
     if user:
         return error.ALREADY_EXIST
 
@@ -59,7 +59,7 @@ def login():
     if email is None or password is None:
         return error.INVALID_INPUT_422
 
-    user = get_user(filter_by="email", value=email)
+    user = get_users(filter_by="email", value=email)
     if not user:
         return error.UNAUTHORIZED
 
