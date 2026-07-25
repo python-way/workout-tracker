@@ -17,7 +17,7 @@ def create_workout_with_exercises(
                          (workout_name, user_id, 'New')
                         )
             workout_id = cur.fetchone()[0]
-            
+
             junctions = []
             for exe in exercises:
                 junction = (workout_id,)
@@ -188,12 +188,10 @@ def get_workouts(user_id, filter_by=None, value=None):
         if filter_by == 'name':
             try:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT * FROM workouts WHERE workout_name = %s", (value,))
+                    cur.execute("SELECT * FROM workouts WHERE workout_name = %s AND user_id = %s", (value, user_id))
                     workout = cur.fetchone() 
                     if workout:
-                        if workout[2] != user_id:
-                            return None
-                        return {"id":workout[0], "workout_name":workout[1], "user_id":workout[2], "status":workout[3], "schedule_time": workout[4]}
+                        return {"id":workout[0], "workout_name":workout[1], "status":workout[2], "schedule_time":workout[3], "user_id": workout[4]}
                     return None
 
             except Exception as e:
@@ -212,9 +210,7 @@ def get_workouts(user_id, filter_by=None, value=None):
                     cur.execute("SELECT * FROM workouts WHERE workout_id = %s", (value,))
                     workout = cur.fetchone()
                     if workout:
-                        if workout[2] != user_id:
-                            return None
-                        return {"id":workout[0], "workout_name":workout[1], "user_id":workout[2], "status":workout[3], "schedule_time": workout[4]}
+                        return {"id":workout[0], "workout_name":workout[1], "status":workout[2], "schedule_time":workout[3], "user_id": workout[4]}
                     return None
 
             except Exception as e:
@@ -229,12 +225,10 @@ def get_workouts(user_id, filter_by=None, value=None):
 
         try:
             with conn.cursor() as cur:
-                cur.execute(" SELECT * FROM workouts WHERE status <> 'done' AND user_id = %s; ", (user_id, ))
+                cur.execute(" SELECT * FROM workouts WHERE status <> 'done' AND user_id = %s", (user_id, ))
                 workouts = cur.fetchall()
 
-                filtered_workouts = [w for w in workouts if w[2] == user_id]
-                workouts_dict = {f"{w[0]}": w[1] for w in filtered_workouts}
-                return workouts_dict
+                return {f"{w[0]}": w[1] for w in workouts}
 
         except Exception as e:
             conn.rollback()
