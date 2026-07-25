@@ -34,8 +34,7 @@ def add_exercise(current_user):
         if db_exercise:
             return error.ALREADY_EXIST
     except PermissionError as e:
-        app.logger.error("Permission error")
-        return error.UNAUTHORIZED
+        return error.FORBIDDEN_403
 
 
     exercise = {"name":e_name, "description":data.get("description"), "category":data.get("category"), "muscle":data.get("muscle")}
@@ -66,8 +65,7 @@ def update_exercise(current_user):
         if db_exercise is None:
             return error.NOT_FOUND_404
     except PermissionError as e:
-        app.logger.error("Permission error")
-        return error.UNAUTHORIZED
+        return error.FORBIDDEN_403
 
   
     exercise = {"name":data.get("name"), "description":data.get("description"), "category":data.get("category"), "muscle":data.get("muscle")}
@@ -87,8 +85,7 @@ def delete_exercise(current_user, exercise_name):
         if db_exercise is None:
             return error.NOT_FOUND_404
     except PermissionError as e:
-        app.logger.error("Permission error")
-        return error.UNAUTHORIZED
+        return error.FORBIDDEN_403
 
     success = delete_exe(exercise_name)
     if not success:
@@ -105,8 +102,7 @@ def list_exercises(current_user):
         if not db_exercises:
             return {"message": "Database query failed"}, 500
     except PermissionError as e:
-        app.logger.error("Permission error")
-        return error.UNAUTHORIZED
+        return error.FORBIDDEN_403
 
     return { "exercises": db_exercises } , 200 
 

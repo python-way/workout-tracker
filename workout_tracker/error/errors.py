@@ -5,5 +5,6 @@ NO_INPUT_400 = ({"message": "No input data provided."}, 400)
 INVALID_INPUT_422 = ({"message": "Invalid input."}, 422)
 ALREADY_EXIST = ({"message": "Already exists."}, 409)
 UNAUTHORIZED = ({"message": "Wrong credentials."}, 401)
+FORBIDDEN_403 = ({"message": "Permission denied."}, 403)
 
 DOES_NOT_EXIST = ({"message": "Does not exists."}, 409)
