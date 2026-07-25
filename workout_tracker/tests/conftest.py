@@ -34,12 +34,15 @@ def runner(app):
 @pytest.fixture()
 def auth_client(client):
     """Provides a client with a fresh, unique logged-in user session."""
-    user_id = uuid.uuid4()
-    email = f"{user_id}@gmail.com"
-    password = "12345678"
+    # user_id = uuid.uuid4()
+    # email = f"{user_id}@gmail.com"
+    # password = "12345678"
+    #
+    # client.post("/register", json={"name": str(user_id), "email": email, "password": password})
+    # res_log = client.post("/login", json={"email": email, "password": password})
+    #
 
-    client.post("/register", json={"name": str(user_id), "email": email, "password": password})
-    res_log = client.post("/login", json={"email": email, "password": password})
+    res_log = client.post("/login", json={"email": "admin@gmail.com", "password": "MyAdminPassword"})
     token = res_log.json['token']
     
     client.environ_base['HTTP_AUTHORIZATION'] = f"Bearer {token}"

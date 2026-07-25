@@ -57,7 +57,7 @@ def create_workout(current_user):
     if None in valid_exercises_names:
         return error.INVALID_INPUT_404
 
-    db_exercises = get_exercises(filter_by="name", value=valid_exercises_names) 
+    db_exercises = get_exercises(filter_by="name", value=valid_exercises_names, for_workouts=True) 
     if db_exercises is None:
         return error.NOT_FOUND_404
     
@@ -173,7 +173,7 @@ def add_workout_exercise(current_user, workout_id):
     if e_name is None:
         return error.INVALID_INPUT_422
 
-    db_exercise = get_exercises(filter_by="name", value=[e_name])
+    db_exercise = get_exercises(filter_by="name", value=[e_name], for_workouts=True)
     if db_exercise is None:
         return error.NOT_FOUND_404
         

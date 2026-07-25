@@ -66,14 +66,15 @@ def delete_exe(exe_name):
 
 
 
-def get_exercises(user_id, filter_by=None, value=None):
+def get_exercises(user_id=None, filter_by=None, value=None, for_workouts=None):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT role FROM users WHERE user_id = %s", (user_id, ))
-            role = cur.fetchone()
-            if not role or role[0] != 'admin':
-                raise PermissionError("User is not allowed")
+            if not for_workouts and user_id is not None:
+                cur.execute("SELECT role FROM users WHERE user_id = %s", (user_id, ))
+                role = cur.fetchone()
+                if not role or role[0] != 'admin':
+                    raise PermissionError("User is not allowed")
 
             if filter_by:
                 if filter_by.strip().lower() == "name":
