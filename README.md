@@ -173,6 +173,7 @@ Creates a new exercise. (Admin operation)
 
 **Error Responses:**
 - `400 Bad Request`: `{"message": "No input data provided."}`
+- `403 Permission Denied`: `{"message": "Permission denied}`
 - `422 Unprocessable Entity`: `{"message": "Invalid input."}`
 - `409 Conflict`: `{"message": "Already exists."}`
 - `500 Internal Server Error`: `{"message": "Database transaction failed."}`
@@ -203,6 +204,7 @@ Updates an existing exercise. (Admin operation)
 
 **Error Responses:**
 - `400 Bad Request`: `{"message": "No input data provided."}`
+- `403 Permission Denied`: `{"message": "Permission denied}`
 - `422 Unprocessable Entity`: `{"message": "Invalid input."}`
 - `404 Not Found`: `{"message": "Resource could not be found."}`
 - `500 Internal Server Error`: `{"message": "Database transaction failed."}`
@@ -235,6 +237,7 @@ Lists all available exercises.
 ```
 
 **Error Response:**
+- `403 Permission Denied`: `{"message": "Permission denied}`
 - `500 Internal Server Error`: `{"message": "Database query failed"}`
 
 ---
@@ -256,6 +259,7 @@ Deletes an exercise. (Admin operation)
 
 **Error Responses:**
 - `404 Not Found`: `{"message": "Resource could not be found."}`
+- `403 Permission Denied`: `{"message": "Permission denied}`
 - `500 Internal Server Error`: `{"message": "Database transaction failed."}`
 
 ---
