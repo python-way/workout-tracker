@@ -4,6 +4,8 @@ from flask import Flask
 
 app = Flask(__name__)
 
+__version__ = "1.0.0"
+
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
