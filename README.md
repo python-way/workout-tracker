@@ -18,7 +18,7 @@ It uses Flask with Authenticated routes (jwt) and postgres integration.
 | Tests            | pytest                     |
 
 ## Project structure
-
+```text
 workout-tracker/
 ├── README.md
 ├── requirements.txt
@@ -53,7 +53,7 @@ workout-tracker/
         ├── test_auth.py
         ├── test_exercise.py
         └── test_workout.py
-
+```
 ## Quick start
 ```bash
 # 1. Get the code
