@@ -9,8 +9,10 @@ from workout_tracker.db.queries.exercise import (
          delete_exe,
          get_exercises,
     )
+from workout_tracker.conf.auth import token_required
 
 ############### Exercises  ###############
+## TODO: Adming only operations
 
 @app.route("/exercise", methods=["POST"])
 def add_exercise():

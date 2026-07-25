@@ -1,6 +1,7 @@
 import sys
 import pytest
 from workout_tracker import app as global_app_obj
+import uuid
 
 @pytest.fixture()
 def app():
@@ -28,4 +29,34 @@ def client(app):
 @pytest.fixture()
 def runner(app):
     return app.test_cli_runner()
+
+
+@pytest.fixture()
+def auth_client(client):
+    """Provides a client with a fresh, unique logged-in user session."""
+    user_id = uuid.uuid4()
+    email = f"{user_id}@gmail.com"
+    password = "12345678"
+
+    client.post("/register", json={"name": str(user_id), "email": email, "password": password})
+    res_log = client.post("/login", json={"email": email, "password": password})
+    token = res_log.json['token']
+    
+    client.environ_base['HTTP_AUTHORIZATION'] = f"Bearer {token}"
+    return client
+
+
+@pytest.fixture()
+def workout_id(auth_client):
+    """Creates a fresh workout plan and returns its unique ID."""
+    w_name = f"{uuid.uuid4()}"
+    res = auth_client.post('/workout', json={
+        "exercises": [{"name": "push-up"}, {"name": "squat", "sets": 2, "reps": 3}, {"name": "plank"}],
+        "workout_name": w_name
+    })
+    return res.json['data']['workout_id']
+
+
+
+
 

@@ -16,7 +16,6 @@ from workout_tracker.db.queries.workout import (
 
          get_workouts,
          get_workout_exercises,
-         list_non_done_workouts,
          schedule_workout,
          mark_workout_pending,
          mark_workout_done,
@@ -25,12 +24,11 @@ from workout_tracker.db.queries.workout import (
 
 from workout_tracker.conf.auth import token_required
 
-current_user = 1
-
 ############## Workout ###############
 
 @app.route("/workout", methods=["POST"])
-def create_workout():
+@token_required
+def create_workout(current_user):
     """
     Creating workout plan with exercises
     
@@ -50,12 +48,8 @@ def create_workout():
     
     if exercises is None or workout_name is None:
         return error.INVALID_INPUT_422
-
-    user = get_users(filter_by='user_id', value=current_user)
-    if not user:
-        return error.UNAUTHORIZED
     
-    workout = get_workouts(filter_by="name", value=workout_name)
+    workout = get_workouts(filter_by="name", value=workout_name, user_id=current_user)
     if workout:
         return error.ALREADY_EXIST
 
@@ -76,7 +70,8 @@ def create_workout():
 
 
 @app.route("/workout/<workout_id>/schedule", methods=["PUT"])
-def schd_workout(workout_id):
+@token_required
+def schd_workout(current_user, workout_id):
     """ 
         Scheduling a workout that's been created previously 
 
@@ -90,7 +85,7 @@ def schd_workout(workout_id):
     if date is None:
         return error.INVALID_INPUT_422
 
-    workout = get_workouts(filter_by="id", value=workout_id)
+    workout = get_workouts(filter_by="id", value=workout_id, user_id=current_user)
     if workout is None:
         return error.NOT_FOUND_404
 
@@ -103,9 +98,10 @@ def schd_workout(workout_id):
 
 
 @app.route("/workout/<workout_id>/start", methods=["PUT"])
-def start_workout(workout_id):
+@token_required
+def start_workout(current_user, workout_id):
     """ Marks workout as pending """
-    workout = get_workouts(filter_by="id", value=workout_id)
+    workout = get_workouts(filter_by="id", value=workout_id, user_id=current_user)
     if workout is None:
         return error.NOT_FOUND_404
 
@@ -117,9 +113,10 @@ def start_workout(workout_id):
 
 
 @app.route("/workout/<workout_id>/do", methods=["PUT"])
-def do_workout(workout_id):
+@token_required
+def do_workout(current_user, workout_id):
     """ Marks workout as done """
-    workout = get_workouts(filter_by="id", value=workout_id)
+    workout = get_workouts(filter_by="id", value=workout_id,  user_id=current_user)
     if workout is None:
         return error.NOT_FOUND_404
 
@@ -130,9 +127,10 @@ def do_workout(workout_id):
     return { "message" : "Workout finished successfully" } , 200
 
 @app.route("/workout/<workout_id>", methods=["DELETE"])
-def delete_workout(workout_id):
+@token_required
+def delete_workout(current_user, workout_id):
     """ Deleting a workout """
-    workout = get_workouts(filter_by="id", value=workout_id)
+    workout = get_workouts(filter_by="id", value=workout_id, user_id=current_user)
     if workout is None:
         return error.NOT_FOUND_404
 
@@ -143,9 +141,10 @@ def delete_workout(workout_id):
     return { "message" : "Workout deleted successfully" }, 204
 
 @app.route("/workout", methods=["GET"])
-def list_workouts():
-    """ List all non-done workouts """
-    workouts = list_non_done_workouts() 
+@token_required
+def list_workouts(current_user):
+    """ List all not-done workouts """
+    workouts = get_workouts(current_user) 
     if workouts is None:
         return { "message": "Database query failed" }, 500
     
@@ -155,7 +154,8 @@ def list_workouts():
 ############### Workout's exercises ###############
 
 @app.route("/workout/<workout_id>/exercise", methods=["POST"])
-def add_workout_exercise(workout_id):
+@token_required
+def add_workout_exercise(current_user, workout_id):
     """ 
     Adding an exercise to a workout
 
@@ -177,7 +177,7 @@ def add_workout_exercise(workout_id):
     if db_exercise is None:
         return error.NOT_FOUND_404
         
-    workout = get_workouts(filter_by="id", value=workout_id)
+    workout = get_workouts(filter_by="id", value=workout_id, user_id=current_user)
     if workout is None:
         return error.NOT_FOUND_404
 
@@ -193,7 +193,8 @@ def add_workout_exercise(workout_id):
  
 
 @app.route("/workout/<workout_id>/exercise", methods=["PUT"])
-def update_workout_exercise(workout_id):
+@token_required
+def update_workout_exercise(current_user, workout_id):
     """
         Update workout's exercise 
 
@@ -211,7 +212,7 @@ def update_workout_exercise(workout_id):
     if e_name is None:
         return error.INVALID_INPUT_422
           
-    workout = get_workouts(filter_by="id", value=workout_id)
+    workout = get_workouts(filter_by="id", value=workout_id, user_id=current_user)
     if workout is None:
         return error.NOT_FOUND_404
 
@@ -240,9 +241,10 @@ def update_workout_exercise(workout_id):
 
 
 @app.route("/workout/<workout_id>/exercise/<exercise_name>", methods=["DELETE"])
-def delete_workout_exercise(workout_id, exercise_name):
+@token_required
+def delete_workout_exercise(current_user, workout_id, exercise_name):
     """ Deleting workout's exercise """
-    workout = get_workouts(filter_by="id", value=workout_id)
+    workout = get_workouts(filter_by="id", value=workout_id, user_id=current_user)
     if workout is None:
         return error.NOT_FOUND_404
 

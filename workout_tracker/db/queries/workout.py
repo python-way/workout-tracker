@@ -122,24 +122,6 @@ def delete_exercise_from_workout(workout_id, exe_name):
         if conn:
             conn.close()
 
-
-def list_non_done_workouts():
-    conn = get_connection()
-
-    try:
-        with conn.cursor() as cur:
-            cur.execute(" SELECT * FROM workouts WHERE status <> 'done' ")
-            workouts = cur.fetchall()
-            workouts = {f"{workout[0]}": workout[1] for workout in workouts}
-            return workouts
-    except Exception as e:
-        conn.rollback()
-        app.logger.error(f"Dataase error: {e}")
-        return None
-    finally:
-        if conn:
-            conn.close()
-
 def schedule_workout(workout_id, date):
     conn = get_connection()
     try:
@@ -190,7 +172,7 @@ def mark_workout_done(workout_id):
         if conn:
             conn.close()
 
-def get_workouts(filter_by=None, value=None):
+def get_workouts(user_id, filter_by=None, value=None):
 
     conn = get_connection()
     if filter_by:
@@ -207,8 +189,10 @@ def get_workouts(filter_by=None, value=None):
             try:
                 with conn.cursor() as cur:
                     cur.execute("SELECT * FROM workouts WHERE workout_name = %s", (value,))
-                    workout = cur.fetchone()
+                    workout = cur.fetchone() 
                     if workout:
+                        if workout[2] != user_id:
+                            return None
                         return {"id":workout[0], "workout_name":workout[1], "user_id":workout[2], "status":workout[3], "schedule_time": workout[4]}
                     return None
 
@@ -228,6 +212,8 @@ def get_workouts(filter_by=None, value=None):
                     cur.execute("SELECT * FROM workouts WHERE workout_id = %s", (value,))
                     workout = cur.fetchone()
                     if workout:
+                        if workout[2] != user_id:
+                            return None
                         return {"id":workout[0], "workout_name":workout[1], "user_id":workout[2], "status":workout[3], "schedule_time": workout[4]}
                     return None
 
@@ -239,14 +225,17 @@ def get_workouts(filter_by=None, value=None):
                 if conn:
                     conn.close()
     else:
-        #### All workouts ####
+        #### All not done workouts ####
 
         try:
             with conn.cursor() as cur:
-                cur.execute(" SELECT * FROM workouts; ")
+                cur.execute(" SELECT * FROM workouts WHERE status <> 'done' AND user_id = %s; ", (user_id, ))
                 workouts = cur.fetchall()
-                workouts = {f"{workout[0]}": workout[1] for workout in workouts}
-                return workouts
+
+                filtered_workouts = [w for w in workouts if w[2] == user_id]
+                workouts_dict = {f"{w[0]}": w[1] for w in filtered_workouts}
+                return workouts_dict
+
         except Exception as e:
             conn.rollback()
             app.logger.error(f"Dataase error: {e}")
