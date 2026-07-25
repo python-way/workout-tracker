@@ -4,6 +4,7 @@ import psycopg2
 from psycopg2 import sql, OperationalError, errors
 from dotenv import load_dotenv
 from workout_tracker import app
+from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv()
 
@@ -26,6 +27,7 @@ def get_connection():
 def init_db():
     conn = get_connection()
     if conn:
+        print("Initiating the database...")
         try: 
             with conn.cursor() as cur:
                 cur.execute("""CREATE TABLE IF NOT EXISTS exercises (
@@ -41,17 +43,18 @@ def init_db():
                 cur.execute("""CREATE TABLE IF NOT EXISTS users (
                                 user_id bigserial,
                                 name varchar(50),
-                                email varchar(255),
+                                email varchar(255) UNIQUE,
                                 password varchar(255),
+                                role varchar(100),
                                 CONSTRAINT user_key PRIMARY KEY (user_id),
                                 CONSTRAINT user_email_unique UNIQUE (name, email));
                             """)
                 cur.execute("""CREATE TABLE IF NOT EXISTS workouts (
                                 workout_id bigserial,
                                 workout_name varchar(50),
-                                user_id integer REFERENCES users (user_id),
                                 status varchar(50),
                                 schedule_time timestamp with time zone,
+                                user_id integer REFERENCES users (user_id) ON DELETE CASCADE,
                                 CONSTRAINT workout_key PRIMARY KEY (workout_id),
                                 CONSTRAINT workout_name_user UNIQUE (workout_name, user_id)
                             );""")
@@ -65,6 +68,12 @@ def init_db():
 
                                 CONSTRAINT workout_exercise_key PRIMARY KEY (workout_id, exercise_name)
                             );""")
+            
+                cur.execute("""INSERT INTO users (name,email,password,role) VALUES (%s,%s,%s, %s) 
+                             ON CONFLICT (email) DO NOTHING""",
+                            ('admin', 'admin@gmail.com', generate_password_hash("MyAdminPassword"), 'admin')
+                            )
+
                 conn.commit()
         except Exception as e:
             app.logger.error(f"Error initializing DB: {e}")

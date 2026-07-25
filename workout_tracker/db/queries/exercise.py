@@ -66,47 +66,44 @@ def delete_exe(exe_name):
 
 
 
-def get_exercises(filter_by=None, value=None):
+def get_exercises(user_id, filter_by=None, value=None):
     conn = get_connection()
-   
-    if filter_by:
-        if filter_by.strip().lower() == "name":
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT role FROM users WHERE user_id = %s", (user_id, ))
+            role = cur.fetchone()
+            if not role or role[0] != 'admin':
+                raise PermissionError("User is not allowed")
 
-            if not value:
-                raise ValueError("value must be iterable not None")
-            
-            try:
-                with conn.cursor() as cur:
-                   found_exercises = []
-                   for exe in value:
-                       cur.execute(" SELECT * FROM exercises WHERE name = %s ", (exe.title(),))
+            if filter_by:
+                if filter_by.strip().lower() == "name":
+                    if not value:
+                        raise ValueError("value must be iterable not None")
+                    
+                    found_exercises = []
+                    for exe in value:
+                       cur.execute(" SELECT * FROM exercises WHERE name = %s", (exe.title(),))
                        found_exe = cur.fetchone()
                        if found_exe is None:
                            return None
                        found_exercises.append(found_exe)
 
-                   return {f"{exe[1]}": {"id":exe[0], "description":exe[1], "category":exe[2], "muscle":exe[3]}
-                            for exe in found_exercises}
-            except Exception as e:
-                conn.rollback()
-                app.logger.error(f"Dataase error: {e}")
-                return None
-            finally:
-                if conn:
-                    conn.close()
-    else:
-        try:
-            with conn.cursor() as cur:
-
+                    return {f"{exe[1]}": {"id":exe[0], "description":exe[1], "category":exe[2], "muscle":exe[3]}
+                        for exe in found_exercises}
+            else:
                cur.execute(" SELECT * FROM exercises; ")
                exercises = cur.fetchall()
                return {f"{exe[1]}": {"id":exe[0], "description":exe[1], "category":exe[2], "muscle":exe[3]}
                        for exe in exercises}
-        except Exception as e:
-            conn.rollback()
-            app.logger.error(f"Dataase error: {e}")
-            return None
-        finally:
-            if conn:
-                conn.close()
+                               
+    except PermissionError as pe:
+        app.logger.warning(f"Unauthorized access attempt by user_id {user_id}: {pe}")
+        raise  # Bubble up PermissionError so your routes can handle it (e.g., return HTTP 403)
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
 

@@ -7,9 +7,9 @@ from workout_tracker.db import get_connection
 
 
 user_data = [ 
-                 ("Alice", "alice@gmail.com", generate_password_hash("12345678")),
-                 ("Bob", "bob@gmail.com", generate_password_hash("87654321")),
-                 ("Charlie", "charlie@gmail.com", generate_password_hash("MyPassword")) 
+                 ("Alice", "alice@gmail.com", generate_password_hash("12345678"), "user"),
+                 ("Bob", "bob@gmail.com", generate_password_hash("87654321"), "user"),
+                 ("Charlie", "charlie@gmail.com", generate_password_hash("MyPassword"), "user")
              ]
 
 exercise_data = [("Push-Up",), ("Squat",), ("Plank",), ("Burpee",)]
@@ -18,16 +18,18 @@ def seeder():
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM users;")
+            cur.execute("SELECT COUNT(*) FROM users WHERE role <> 'admin';")
             if cur.fetchone()[0] > 0:
                 app.logger.info("Seeder skipped — data already exists.")
                 return None
+
+            print("Seeding the database...")
 
             cur.execute("TRUNCATE TABLE exercises CASCADE")
             cur.execute("TRUNCATE TABLE workouts CASCADE")
             
             execute_values(cur, 
-                           "INSERT INTO users (name,email,password) VALUES %s RETURNING user_id",
+                           "INSERT INTO users (name,email,password,role) VALUES %s RETURNING user_id",
                            user_data)
             user_ids = [row[0] for row in cur.fetchall()]
 
