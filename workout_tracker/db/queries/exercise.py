@@ -89,12 +89,12 @@ def get_exercises(user_id=None, filter_by=None, value=None, for_workouts=None):
                            return None
                        found_exercises.append(found_exe)
 
-                    return {f"{exe[1]}": {"id":exe[0], "description":exe[1], "category":exe[2], "muscle":exe[3]}
+                    return {f"{exe[1]}": {"id":exe[0], "name":exe[1], "description":exe[2], "category":exe[3], "muscle":exe[4]}
                         for exe in found_exercises}
             else:
                cur.execute(" SELECT * FROM exercises; ")
                exercises = cur.fetchall()
-               return {f"{exe[1]}": {"id":exe[0], "description":exe[1], "category":exe[2], "muscle":exe[3]}
+               return {f"{exe[1]}": {"id":exe[0], "name":exe[1], "description":exe[2], "category":exe[3], "muscle":exe[4]}
                        for exe in exercises}
                                
     except PermissionError as pe:
