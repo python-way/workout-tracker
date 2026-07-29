@@ -7,18 +7,11 @@ from workout_tracker import app
 from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv()
-
-DB_CONFIG = {
-    "dbname": os.getenv("DB_NAME", "workout"),
-    "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", "password"),
-    "host": os.getenv("DB_HOST", "localhost"),
-    "port": os.getenv("DB_PORT", "5432")
-}
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 def get_connection():
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = psycopg2.connect(DATABASE_URL)
         return conn
     except OperationalError as oe:
         app.logger.error(f"Database connection failed: {oe}")

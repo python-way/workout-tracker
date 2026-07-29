@@ -11,5 +11,5 @@ if __name__ == "__main__":
     if "--seed" in sys.argv:
         seeder()
 
-    app.run(debug=True)
+    app.run()
 
